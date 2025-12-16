@@ -3,6 +3,7 @@
 #include "exp.hpp"
 #include "multiexp.hpp"
 #include "msm.hpp"
+#include "glv_msm_bn254.hpp"
 
 template <typename BaseField>
 class Curve {
@@ -130,7 +131,21 @@ public:
     void multiMulByScalarMSM(Point &r, PointAffine *bases, uint8_t* scalars, unsigned int scalarSize,
                              unsigned int n, unsigned int nThreads=0) {
         MSM<Curve<BaseField>, BaseField> msm(*this);
+
+#ifdef USE_G1_GLV_MSM
+        glv_bn254::run_msm_with_glv_if_g1_bn254<Curve<BaseField>, BaseField>(
+            msm,
+            *this,
+            r,
+            bases,
+            scalars,
+            scalarSize,
+            n,
+            nThreads
+        );
+#else
         msm.run(r, bases, scalars, scalarSize, n, nThreads);
+#endif
     }
 
 #ifdef COUNT_OPS

@@ -5,9 +5,8 @@
 #include <gmp.h>
 #include "fq.hpp"
 
-namespace glv_bn254 {
+namespace em {
 
-// -------- BN254 scalar field order N (Fr_rawq from fr_raw_generic.cpp) --------
 static constexpr int N64 = 4;
 static const mp_limb_t FR_N[N64] = {
     0x43e1f593f0000001ULL,
@@ -17,23 +16,19 @@ static const mp_limb_t FR_N[N64] = {
 };
 
 // -------- v1=(a1,b1), v2=(a2,b2) --------
-// a1 and b2 are 64-bit:
 static const mp_limb_t A1 = 0x89d3256894d213e3ULL; // 9931322734385697763
 static const mp_limb_t B2 = 0x89d3256894d213e3ULL; // 9931322734385697763
 
-// abs(b1) is 127-bit => 2 limbs
 static const mp_limb_t ABS_B1[2] = {
     0x8211bbeb7d4f1128ULL,
     0x6f4d8248eeb859fcULL
 };
 
-// a2 is 127-bit => 2 limbs
 static const mp_limb_t A2[2] = {
     0x0be4e1541221250bULL,
     0x6f4d8248eeb859fdULL
 };
 
-// beta in Montgomery for Fq (computed as beta*R mod p, 4 limbs)
 static inline const RawFq::Element& beta_mont()
 {
     static const RawFq::Element b = { {
@@ -68,10 +63,7 @@ static inline void mpn_to_bytes(uint8_t* out, size_t outLen, const mp_limb_t* a,
 
 static inline void round_div_pos(mp_limb_t* q, mp_limb_t* r, const mp_limb_t* num, size_t nn)
 {
-    // q,r must be allocated: q size >= nn-N64+1, r size >= N64
-    // Compute q=floor(num/N), r=num%N then nearest rounding: if 2r>=N => q++
     mpn_tdiv_qr(q, r, 0, num, nn, FR_N, N64);
-
     mp_limb_t r2[N64];
     mp_limb_t carry = mpn_lshift(r2, r, N64, 1);
     int ge = carry ? 1 : (mpn_cmp(r2, FR_N, N64) >= 0);
@@ -80,18 +72,16 @@ static inline void round_div_pos(mp_limb_t* q, mp_limb_t* r, const mp_limb_t* nu
     }
 }
 
-struct GlvDecomp {
+struct k1k2 {
     bool neg1;
     bool neg2;
-    uint8_t k1[16]; // abs(k1) <= 127 bits
-    uint8_t k2[16]; // abs(k2) <= 127 bits
+    uint8_t k1[16];
+    uint8_t k2[16];
 };
 
-// Decompose scalar a (32 bytes) into k1,k2
-// Produces abs values + sign flags.
-static inline GlvDecomp decompose_fr_le_32(const uint8_t a_le[32])
+static inline k1k2 decompose(const uint8_t a[32])
 {
-    mp_limb_t k[4]; bytes32_to_mpn4(k, a_le);
+    mp_limb_t k[4]; bytes32_to_mpn4(k, a);
 
     // q1 = round( k * b2 / N ) ; b2 = 64-bit
     mp_limb_t num1[5];
@@ -156,7 +146,7 @@ static inline GlvDecomp decompose_fr_le_32(const uint8_t a_le[32])
         mpn_sub_n(k2mag, q2b2, q1b1, 4);
     }
 
-    GlvDecomp out{};
+    k1k2 out;
     out.neg1 = neg1;
     out.neg2 = neg2;
 
@@ -166,13 +156,12 @@ static inline GlvDecomp decompose_fr_le_32(const uint8_t a_le[32])
     return out;
 }
 
-// Apply phi(P) = (beta*x, y) for affine point over RawFq
 template <class PointAffine>
-static inline void apply_phi_inplace_g1(PointAffine &p)
+static inline void phiP(PointAffine &p)
 {
     RawFq::Element tmp;
     RawFq::field.mul(tmp, p.x, beta_mont());
     p.x = tmp;
 }
 
-} // namespace glv_bn254
+} // namespace em

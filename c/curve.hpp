@@ -3,7 +3,7 @@
 #include "exp.hpp"
 #include "multiexp.hpp"
 #include "msm.hpp"
-#include "glv_msm_bn254.hpp"
+#include "em_msm.hpp"
 
 template <typename BaseField>
 class Curve {
@@ -132,8 +132,8 @@ public:
                              unsigned int n, unsigned int nThreads=0) {
         MSM<Curve<BaseField>, BaseField> msm(*this);
 
-#ifdef USE_G1_GLV_MSM
-        glv_bn254::run_msm_with_glv_if_g1_bn254<Curve<BaseField>, BaseField>(
+#ifdef USE_EM
+        em::run_msm_em<Curve<BaseField>, BaseField>(
             msm,
             *this,
             r,

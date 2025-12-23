@@ -4,9 +4,8 @@
 #include <cstring>
 #include "fq.hpp"
 
-namespace glv_bn254 {
+namespace em {
 
-// ---------------- BN254 Fr order N (u64 limbs) ----------------
 static constexpr int N64 = 4;
 static constexpr uint64_t FR_N[N64] = {
     0x43e1f593f0000001ULL,
@@ -15,7 +14,7 @@ static constexpr uint64_t FR_N[N64] = {
     0x30644e72e131a029ULL
 };
 
-// -------- v1=(a1,b1), v2=(a2,b2) constants --------
+// -------- v1=(a1,b1), v2=(a2,b2) --------
 static constexpr uint64_t A1 = 0x89d3256894d213e3ULL; // 9931322734385697763
 static constexpr uint64_t B2 = 0x89d3256894d213e3ULL; // 9931322734385697763
 
@@ -29,7 +28,6 @@ static constexpr uint64_t A2[2] = {
     0x6f4d8248eeb859fdULL
 };
 
-// beta in Montgomery for Fq (beta*R mod p) 4 limbs
 static inline const RawFq::Element& beta_mont()
 {
     static const RawFq::Element b = { {
@@ -41,7 +39,6 @@ static inline const RawFq::Element& beta_mont()
     return b;
 }
 
-// ---------------- small limb helpers (base B = 2^64) ----------------
 static inline int cmp_u64(const uint64_t* a, const uint64_t* b, size_t n)
 {
     for (size_t i = n; i-- > 0; ) {
@@ -147,7 +144,6 @@ static inline unsigned clz64(uint64_t x)
     return x ? (unsigned)__builtin_clzll(x) : 64u;
 }
 
-// num = a(na) * b(nb) -> out(na+nb), fixed-size small
 static inline void mul_u64(uint64_t* out, const uint64_t* a, size_t na, const uint64_t* b, size_t nb)
 {
     std::memset(out, 0, (na + nb) * sizeof(uint64_t));
@@ -307,17 +303,17 @@ static inline void u64_to_bytes(uint8_t* out, size_t outLen, const uint64_t* a, 
     }
 }
 
-// ---------------- GLV decompose ----------------
-struct GlvDecomp {
+// ---------------- k = (k1, k2) decompose ----------------
+struct k1k2 {
     bool neg1;
     bool neg2;
-    uint8_t k1[16]; // abs(k1)
-    uint8_t k2[16]; // abs(k2)
+    uint8_t k1[16];
+    uint8_t k2[16];
 };
 
-static inline GlvDecomp decompose_fr_le_32(const uint8_t a_le[32])
+static inline k1k2 decompose(const uint8_t a[32])
 {
-    uint64_t k[4]; bytes32_to_u64x4(k, a_le);
+    uint64_t k[4]; bytes32_to_u64x4(k, a);
 
     // num1 = k * B2  => 5 limbs
     uint64_t num1[5];
@@ -361,34 +357,32 @@ static inline GlvDecomp decompose_fr_le_32(const uint8_t a_le[32])
 
     // k2 = q1*abs(b1) - q2*b2 (signed)
     uint64_t q1b1[4];
-    mul_u64(q1b1, q1, 2, ABS_B1, 2); // 4 limbs
+    mul_u64(q1b1, q1, 2, ABS_B1, 2);
 
     uint64_t q2b2[4];
-    mul_u64_1(q2b2, q2, 3, (uint64_t)B2); // writes 4 limbs
+    mul_u64_1(q2b2, q2, 3, (uint64_t)B2);
 
     bool neg2 = (cmp_u64(q1b1, q2b2, 4) < 0);
     uint64_t k2mag[4];
     if (!neg2) sub_u64(k2mag, q1b1, q2b2, 4);
     else       sub_u64(k2mag, q2b2, q1b1, 4);
 
-    GlvDecomp out{};
+    k1k2 out;
     out.neg1 = neg1;
     out.neg2 = neg2;
 
-    // we only need 16 bytes (abs values)
     u64_to_bytes(out.k1, 16, k1mag, 5);
     u64_to_bytes(out.k2, 16, k2mag, 4);
 
     return out;
 }
 
-// Apply phi(P) = (beta*x, y) for affine point over RawFq
 template <class PointAffine>
-static inline void apply_phi_inplace_g1(PointAffine &p)
+static inline void phiP(PointAffine &p)
 {
     RawFq::Element tmp;
     RawFq::field.mul(tmp, p.x, beta_mont());
     p.x = tmp;
 }
 
-} // namespace glv_bn254
+} // namespace em

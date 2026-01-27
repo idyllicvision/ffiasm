@@ -41,7 +41,7 @@ function testSplitParStr() {
         " ../c/splitparstr.cpp"+
         " ../c/splitparstr_test.cpp"+
         " googletest-release-1.10.0/libgtest.a"+
-        " -pthread -std=c++11 -o splitparsestr_test", {cwd: "build", nopipe: true}
+        " -pthread -std=c++17 -o splitparsestr_test", {cwd: "build", nopipe: true}
     );
     sh("./splitparsestr_test", {cwd: "build", nopipe: true});
 }
@@ -62,7 +62,7 @@ function testAltBn128() {
         " fr.o"+
         " googletest-release-1.10.0/libgtest.a"+
         " -o altbn128_test" +
-        " -fmax-errors=5 -pthread -std=c++11 -fopenmp -lgmp -g", {cwd: "build", nopipe: true}
+        " -fmax-errors=5 -pthread -std=c++17 -fopenmp -lgmp -g", {cwd: "build", nopipe: true}
     );
     sh("./altbn128_test", {cwd: "build", nopipe: true});
 }
@@ -84,7 +84,7 @@ function benchMultiExpG1() {
         " fr.o"+
         // " googletest-release-1.10.0/libgtest.a"+
         " -o multiexp_g1_benchmark" +
-        " -lgmp -pthread -std=c++11 -fopenmp" , {cwd: "build", nopipe: true}
+        " -lgmp -pthread -std=c++17 -fopenmp" , {cwd: "build", nopipe: true}
     );
     sh("./multiexp_g1_benchmark 16777216", {cwd: "build", nopipe: true});
 }
@@ -105,7 +105,7 @@ function benchMultiExpG2() {
         " fr.o"+
         // " googletest-release-1.10.0/libgtest.a"+
         " -o multiexp_g2_benchmark" +
-        " -lgmp -pthread -std=c++11 -fopenmp" , {cwd: "build", nopipe: true}
+        " -lgmp -pthread -std=c++17 -fopenmp" , {cwd: "build", nopipe: true}
     );
     sh("./multiexp_g2_benchmark 16777216", {cwd: "build", nopipe: true});
 }

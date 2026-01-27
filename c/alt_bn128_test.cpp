@@ -129,13 +129,15 @@ TEST(altBn128, g1_times_3) {
     ASSERT_TRUE(G1.eq(p1,p2));
 }
 
-TEST(altBn128, g1_times_3_exp) {
+    TEST(altBn128, g1_times_3_exp) {
     G1Point p1;
     G1.add(p1, G1.one(), G1.one());
     G1.add(p1, p1, G1.one());
 
     uint8_t scalar[32];
-    u256_scalar32_from_u64(scalar, 3);
+    U256 x;
+    mp_set_ui(&x, 3);
+    mp_export(scalar, &x);
 
     G1Point p2;
     G1.mulByScalar(p2, G1.one(), scalar, 32);
@@ -163,7 +165,7 @@ TEST(altBn128, g1_times_5) {
     ASSERT_TRUE(G1.eq(p1,p6));
 }
 
-TEST(altBn128, g1_times_65_exp) {
+    TEST(altBn128, g1_times_65_exp) {
     G1Point p1;
     G1.dbl(p1, G1.one());
     G1.dbl(p1, p1);
@@ -174,7 +176,9 @@ TEST(altBn128, g1_times_65_exp) {
     G1.add(p1, p1, G1.one());
 
     uint8_t scalar[32];
-    u256_scalar32_from_u64(scalar, 65);
+    U256 x;
+    mp_set_ui(&x, 65);
+    mp_export(scalar, &x);
 
     G1Point p2;
     G1.mulByScalar(p2, G1.one(), scalar, 32);
@@ -182,11 +186,14 @@ TEST(altBn128, g1_times_65_exp) {
     ASSERT_TRUE(G1.eq(p1,p2));
 }
 
-TEST(altBn128, g1_expToOrder) {
+    TEST(altBn128, g1_expToOrder) {
     uint8_t scalar[32];
-    ASSERT_EQ(u256_scalar32_from_dec(scalar,
-        "21888242871839275222246405745257275088548364400416034343698204186575808495617"
+    U256 x;
+    ASSERT_EQ(mp_set_str(&x,
+        "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+        10
     ), 0);
+    mp_export(scalar, &x);
 
     G1Point p1;
     G1.mulByScalar(p1, G1.one(), scalar, 32);
@@ -194,11 +201,14 @@ TEST(altBn128, g1_expToOrder) {
     ASSERT_TRUE(G1.isZero(p1));
 }
 
-TEST(altBn128, g2_expToOrder) {
+    TEST(altBn128, g2_expToOrder) {
     uint8_t scalar[32];
-    ASSERT_EQ(u256_scalar32_from_dec(scalar,
-        "21888242871839275222246405745257275088548364400416034343698204186575808495617"
+    U256 x;
+    ASSERT_EQ(mp_set_str(&x,
+        "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+        10
     ), 0);
+    mp_export(scalar, &x);
 
     Curve<F2Field<RawFq>>::Point p1;
     G2.mulByScalar(p1, G2.one(), scalar, 32);
@@ -222,7 +232,9 @@ TEST(altBn128, multiExp) {
             G1.add(bases[i], bases[i-1], G1.one());
         }
 
-        u256_scalar32_from_u64(scalars[i], (uint64_t)(i + 1));
+        U256 x;
+        mp_set_ui(&x, (uint64_t)(i + 1));
+        mp_export(scalars[i], &x);
         acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
@@ -230,7 +242,9 @@ TEST(altBn128, multiExp) {
     G1.multiMulByScalar(p1, bases, (uint8_t *)scalars, 32, NMExp);
 
     uint8_t sAcc[32];
-    u256_scalar32_from_u64(sAcc, acc);
+    U256 x;
+    mp_set_ui(&x, acc);
+    mp_export(sAcc, &x);
 
     G1Point p2;
     G1.mulByScalar(p2, G1.one(), sAcc, 32);
@@ -257,7 +271,9 @@ TEST(altBn128, multiExpMSM) {
             G1.add(bases[i], bases[i-1], G1.one());
         }
 
-        u256_scalar32_from_u64(scalars[i], (uint64_t)(i + 1));
+        U256 x;
+        mp_set_ui(&x, (uint64_t)(i + 1));
+        mp_export(scalars[i], &x);
         acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
@@ -265,7 +281,9 @@ TEST(altBn128, multiExpMSM) {
     G1.multiMulByScalarMSM(p1, bases, (uint8_t *)scalars, 32, NMExp);
 
     uint8_t sAcc[32];
-    u256_scalar32_from_u64(sAcc, acc);
+    U256 x;
+    mp_set_ui(&x, acc);
+    mp_export(sAcc, &x);
 
     G1Point p2;
     G1.mulByScalar(p2, G1.one(), sAcc, 32);

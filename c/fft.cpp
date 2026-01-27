@@ -48,7 +48,7 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
     std::memcpy(qm1.limb, (const void*)qm1_norm.v, sizeof(qm1.limb));
 
     U256 qm1d2;
-    u256_fdiv_q_2exp(&qm1d2, &qm1, 1);
+    mp_fdiv_q_2exp(&qm1d2, &qm1, 1);
 
     Element cand, res;
     uint64_t cand_ui = 2;
@@ -65,12 +65,12 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
     }
 
     U256 aux;
-    u256_copy(&aux, &qm1d2);
+    mp_copy(&aux, &qm1d2);
 
     u_int32_t s_tmp = 1;
     while (s_tmp < domainPow) {
-        if (u256_tstbit(&aux, 0)) break;
-        u256_fdiv_q_2exp(&aux, &aux, 1);
+        if (mp_tstbit(&aux, 0)) break;
+        mp_fdiv_q_2exp(&aux, &aux, 1);
         s_tmp++;
     }
 

@@ -5,7 +5,7 @@
 #include <cstring>
 
 #include "misc.hpp"
-#include "u256.hpp"
+#include "mp.hpp"
 
 using namespace std;
 
@@ -44,19 +44,19 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
     Element qm1_norm;
     f.fromMontgomery(qm1_norm, f.negOne());
 
-    U256 qm1;
-    std::memcpy(qm1.limb, (const void*)qm1_norm.v, sizeof(qm1.limb));
+    mp_limb_t qm1[4];
+    std::memcpy(qm1, (const void*)qm1_norm.v, sizeof(qm1));
 
-    U256 qm1d2;
-    mp_fdiv_q_2exp(&qm1d2, &qm1, 1);
+    mp_limb_t qm1d2[4];
+    mp_fdiv_q_2exp(qm1d2, qm1, 1);
 
     Element cand, res;
     uint64_t cand_ui = 2;
     for (;;) {
         f.fromUI(cand, cand_ui);
         f.exp(res, cand,
-              reinterpret_cast<uint8_t*>(qm1d2.limb),
-              (unsigned)sizeof(qm1d2.limb));
+              reinterpret_cast<uint8_t*>(qm1d2),
+              (unsigned)sizeof(qm1d2));
         if (!f.eq(res, f.one())) {
             f.copy(nqr, cand);
             break;
@@ -64,13 +64,13 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
         cand_ui++;
     }
 
-    U256 aux;
-    mp_copy(&aux, &qm1d2);
+    mp_limb_t aux[4];
+    mp_copy(aux, qm1d2);
 
     u_int32_t s_tmp = 1;
     while (s_tmp < domainPow) {
-        if (mp_tstbit(&aux, 0)) break;
-        mp_fdiv_q_2exp(&aux, &aux, 1);
+        if (mp_tstbit(aux, 0)) break;
+        mp_fdiv_q_2exp(aux, aux, 1);
         s_tmp++;
     }
 
@@ -89,8 +89,8 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
 
     if (nRoots > 1) {
         f.exp(roots[1], nqr,
-              reinterpret_cast<uint8_t*>(aux.limb),
-              (unsigned)sizeof(aux.limb));
+              reinterpret_cast<uint8_t*>(aux),
+              (unsigned)sizeof(aux));
 
         Element two;
         f.fromUI(two, 2);

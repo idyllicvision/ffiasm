@@ -5,7 +5,7 @@
 #include "gtest/gtest.h"
 #include "alt_bn128.hpp"
 #include "fft.hpp"
-#include "u256.hpp"
+#include "mp.hpp"
 
 using namespace AltBn128;
 
@@ -135,9 +135,9 @@ TEST(altBn128, g1_times_3) {
     G1.add(p1, p1, G1.one());
 
     uint8_t scalar[32];
-    U256 x;
-    mp_set_ui(&x, 3);
-    mp_export(scalar, &x);
+    mp_limb_t x[MP_N64];
+    mp_set_ui(x, 3);
+    mp_export(scalar, x);
 
     G1Point p2;
     G1.mulByScalar(p2, G1.one(), scalar, 32);
@@ -176,9 +176,9 @@ TEST(altBn128, g1_times_5) {
     G1.add(p1, p1, G1.one());
 
     uint8_t scalar[32];
-    U256 x;
-    mp_set_ui(&x, 65);
-    mp_export(scalar, &x);
+    mp_limb_t x[MP_N64];
+    mp_set_ui(x, 65);
+    mp_export(scalar, x);
 
     G1Point p2;
     G1.mulByScalar(p2, G1.one(), scalar, 32);
@@ -188,12 +188,12 @@ TEST(altBn128, g1_times_5) {
 
     TEST(altBn128, g1_expToOrder) {
     uint8_t scalar[32];
-    U256 x;
-    ASSERT_EQ(mp_set_str(&x,
+    mp_limb_t x[MP_N64];
+    ASSERT_EQ(mp_set_str(x,
         "21888242871839275222246405745257275088548364400416034343698204186575808495617",
         10
     ), 0);
-    mp_export(scalar, &x);
+    mp_export(scalar, x);
 
     G1Point p1;
     G1.mulByScalar(p1, G1.one(), scalar, 32);
@@ -203,12 +203,12 @@ TEST(altBn128, g1_times_5) {
 
     TEST(altBn128, g2_expToOrder) {
     uint8_t scalar[32];
-    U256 x;
-    ASSERT_EQ(mp_set_str(&x,
+    mp_limb_t x[MP_N64];
+    ASSERT_EQ(mp_set_str(x,
         "21888242871839275222246405745257275088548364400416034343698204186575808495617",
         10
     ), 0);
-    mp_export(scalar, &x);
+    mp_export(scalar, x);
 
     Curve<F2Field<RawFq>>::Point p1;
     G2.mulByScalar(p1, G2.one(), scalar, 32);
@@ -232,9 +232,9 @@ TEST(altBn128, multiExp) {
             G1.add(bases[i], bases[i-1], G1.one());
         }
 
-        U256 x;
-        mp_set_ui(&x, (uint64_t)(i + 1));
-        mp_export(scalars[i], &x);
+        mp_limb_t x[MP_N64];
+        mp_set_ui(x, (uint64_t)(i + 1));
+        mp_export(scalars[i], x);
         acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
@@ -242,9 +242,9 @@ TEST(altBn128, multiExp) {
     G1.multiMulByScalar(p1, bases, (uint8_t *)scalars, 32, NMExp);
 
     uint8_t sAcc[32];
-    U256 x;
-    mp_set_ui(&x, acc);
-    mp_export(sAcc, &x);
+    mp_limb_t x[MP_N64];
+    mp_set_ui(x, acc);
+    mp_export(sAcc, x);
 
     G1Point p2;
     G1.mulByScalar(p2, G1.one(), sAcc, 32);
@@ -271,9 +271,9 @@ TEST(altBn128, multiExpMSM) {
             G1.add(bases[i], bases[i-1], G1.one());
         }
 
-        U256 x;
-        mp_set_ui(&x, (uint64_t)(i + 1));
-        mp_export(scalars[i], &x);
+        mp_limb_t x[MP_N64];
+        mp_set_ui(x, (uint64_t)(i + 1));
+        mp_export(scalars[i], x);
         acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
@@ -281,9 +281,9 @@ TEST(altBn128, multiExpMSM) {
     G1.multiMulByScalarMSM(p1, bases, (uint8_t *)scalars, 32, NMExp);
 
     uint8_t sAcc[32];
-    U256 x;
-    mp_set_ui(&x, acc);
-    mp_export(sAcc, &x);
+    mp_limb_t x[MP_N64];
+    mp_set_ui(x, acc);
+    mp_export(sAcc, x);
 
     G1Point p2;
     G1.mulByScalar(p2, G1.one(), sAcc, 32);

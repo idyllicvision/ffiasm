@@ -134,13 +134,13 @@ TEST(altBn128, g1_times_3) {
     G1.add(p1, G1.one(), G1.one());
     G1.add(p1, p1, G1.one());
 
-    uint8_t scalar[32];
-    mp_limb_t x[MP_N64];
-    mp_set_ui(x, 3);
+    uint8_t scalar[MP_N];
+    mp_uint_t x;
+    mp_set(x, 3);
     mp_export(scalar, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), scalar, 32);
+    G1.mulByScalar(p2, G1.one(), scalar, MP_N);
 
     ASSERT_TRUE(G1.eq(p1,p2));
 }
@@ -175,43 +175,43 @@ TEST(altBn128, g1_times_5) {
     G1.dbl(p1, p1);
     G1.add(p1, p1, G1.one());
 
-    uint8_t scalar[32];
-    mp_limb_t x[MP_N64];
-    mp_set_ui(x, 65);
+    uint8_t scalar[MP_N];
+    mp_uint_t x;
+    mp_set(x, 65);
     mp_export(scalar, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), scalar, 32);
+    G1.mulByScalar(p2, G1.one(), scalar, MP_N);
 
     ASSERT_TRUE(G1.eq(p1,p2));
 }
 
     TEST(altBn128, g1_expToOrder) {
-    uint8_t scalar[32];
-    mp_limb_t x[MP_N64];
-    ASSERT_EQ(mp_set_str(x,
+    uint8_t scalar[MP_N];
+    mp_uint_t x;
+    ASSERT_EQ(mp_set(x,
         "21888242871839275222246405745257275088548364400416034343698204186575808495617",
         10
     ), 0);
     mp_export(scalar, x);
 
     G1Point p1;
-    G1.mulByScalar(p1, G1.one(), scalar, 32);
+    G1.mulByScalar(p1, G1.one(), scalar, MP_N);
 
     ASSERT_TRUE(G1.isZero(p1));
 }
 
     TEST(altBn128, g2_expToOrder) {
-    uint8_t scalar[32];
-    mp_limb_t x[MP_N64];
-    ASSERT_EQ(mp_set_str(x,
+    uint8_t scalar[MP_N];
+    mp_uint_t x;
+    ASSERT_EQ(mp_set(x,
         "21888242871839275222246405745257275088548364400416034343698204186575808495617",
         10
     ), 0);
     mp_export(scalar, x);
 
     Curve<F2Field<RawFq>>::Point p1;
-    G2.mulByScalar(p1, G2.one(), scalar, 32);
+    G2.mulByScalar(p1, G2.one(), scalar, MP_N);
 
     ASSERT_TRUE(G2.isZero(p1));
 }
@@ -219,7 +219,7 @@ TEST(altBn128, g1_times_5) {
 TEST(altBn128, multiExp) {
     int NMExp = 40000;
 
-    typedef uint8_t Scalar[32];
+    typedef uint8_t Scalar[MP_N];
 
     Scalar *scalars = new Scalar[NMExp];
     G1PointAffine *bases = new G1PointAffine[NMExp];
@@ -232,22 +232,22 @@ TEST(altBn128, multiExp) {
             G1.add(bases[i], bases[i-1], G1.one());
         }
 
-        mp_limb_t x[MP_N64];
-        mp_set_ui(x, (uint64_t)(i + 1));
+        mp_uint_t x;
+        mp_set(x, (uint64_t)(i + 1));
         mp_export(scalars[i], x);
         acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
     G1Point p1;
-    G1.multiMulByScalar(p1, bases, (uint8_t *)scalars, 32, NMExp);
+    G1.multiMulByScalar(p1, bases, (uint8_t *)scalars, MP_N, NMExp);
 
-    uint8_t sAcc[32];
-    mp_limb_t x[MP_N64];
-    mp_set_ui(x, acc);
+    uint8_t sAcc[MP_N];
+    mp_uint_t x;
+    mp_set(x, acc);
     mp_export(sAcc, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), sAcc, 32);
+    G1.mulByScalar(p2, G1.one(), sAcc, MP_N);
 
     ASSERT_TRUE(G1.eq(p1, p2));
 
@@ -258,7 +258,7 @@ TEST(altBn128, multiExp) {
 TEST(altBn128, multiExpMSM) {
     int NMExp = 40000;
 
-    typedef uint8_t Scalar[32];
+    typedef uint8_t Scalar[MP_N];
 
     Scalar *scalars = new Scalar[NMExp];
     G1PointAffine *bases = new G1PointAffine[NMExp];
@@ -271,22 +271,22 @@ TEST(altBn128, multiExpMSM) {
             G1.add(bases[i], bases[i-1], G1.one());
         }
 
-        mp_limb_t x[MP_N64];
-        mp_set_ui(x, (uint64_t)(i + 1));
+        mp_uint_t x;
+        mp_set(x, (uint64_t)(i + 1));
         mp_export(scalars[i], x);
         acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
     G1Point p1;
-    G1.multiMulByScalarMSM(p1, bases, (uint8_t *)scalars, 32, NMExp);
+    G1.multiMulByScalarMSM(p1, bases, (uint8_t *)scalars, MP_N, NMExp);
 
-    uint8_t sAcc[32];
-    mp_limb_t x[MP_N64];
-    mp_set_ui(x, acc);
+    uint8_t sAcc[MP_N];
+    mp_uint_t x;
+    mp_set(x, acc);
     mp_export(sAcc, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), sAcc, 32);
+    G1.mulByScalar(p2, G1.one(), sAcc, MP_N);
 
     ASSERT_TRUE(G1.eq(p1, p2));
 
@@ -317,7 +317,7 @@ TEST(altBn128, multiExp2) {
     F1.fromString(ref.x, "9163953212624378696742080269971059027061360176019470242548968584908855004282");
     F1.fromString(ref.y, "20922060990592511838374895951081914567856345629513259026540392951012456141360");
 
-    G1.multiMulByScalar(r, bases, (uint8_t *)scalars, 32, 2);
+    G1.multiMulByScalar(r, bases, (uint8_t *)scalars, MP_N, 2);
     G1.copy(ra, r);
 
     ASSERT_TRUE(G1.eq(ra, ref));
@@ -349,7 +349,7 @@ TEST(altBn128, multiExp2MSM) {
     F1.fromString(ref.x, "9163953212624378696742080269971059027061360176019470242548968584908855004282");
     F1.fromString(ref.y, "20922060990592511838374895951081914567856345629513259026540392951012456141360");
 
-    G1.multiMulByScalarMSM(r, bases, (uint8_t *)scalars, 32, 2);
+    G1.multiMulByScalarMSM(r, bases, (uint8_t *)scalars, MP_N, 2);
     G1.copy(ra, r);
 
     ASSERT_TRUE(G1.eq(ra, ref));
@@ -405,7 +405,7 @@ TEST(altBn128, multiExp8MSM) {
     F1.fromString(ref.x, "17747920359253913546551417160303297937542312574889904290131615776238588901697");
     F1.fromString(ref.y, "8815119438581789680513912776342567599606944899217792926373871775002956510503");
 
-    G1.multiMulByScalarMSM(r, bases, (uint8_t *)scalars, 32, NMExp);
+    G1.multiMulByScalarMSM(r, bases, (uint8_t *)scalars, MP_N, NMExp);
     G1.copy(ra, r);
 
     ASSERT_TRUE(G1.eq(ra, ref));

@@ -6,6 +6,7 @@
 
 #include "misc.hpp"
 #include "mp.hpp"
+#include "../../../build/mp.hpp"
 
 using namespace std;
 
@@ -26,7 +27,7 @@ static inline u_int64_t BR(u_int64_t x, u_int64_t domainPow)
     x = ((x & 0xFF00FF00) >> 8) | ((x & 0x00FF00FF) << 8);
     x = ((x & 0xF0F0F0F0) >> 4) | ((x & 0x0F0F0F0F) << 4);
     x = ((x & 0xCCCCCCCC) >> 2) | ((x & 0x33333333) << 2);
-    return (((x & 0xAAAAAAAA) >> 1) | ((x & 0x55555555) << 1)) >> (32-domainPow);
+    return (((x & 0xAAAAAAAA) >> 1) | ((x & 0x55555555) << 1)) >> (MP_N-domainPow);
 }
 
 #define ROOT(s,j) (rootsOfUnit[(1<<(s))+(j)])
@@ -44,11 +45,11 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
     Element qm1_norm;
     f.fromMontgomery(qm1_norm, f.negOne());
 
-    mp_limb_t qm1[4];
+    mp_uint_t qm1;
     std::memcpy(qm1, (const void*)qm1_norm.v, sizeof(qm1));
 
-    mp_limb_t qm1d2[4];
-    mp_fdiv_q_2exp(qm1d2, qm1, 1);
+    mp_uint_t qm1d2;
+    mp_shr(qm1d2, qm1, 1);
 
     Element cand, res;
     uint64_t cand_ui = 2;
@@ -64,13 +65,13 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
         cand_ui++;
     }
 
-    mp_limb_t aux[4];
+    mp_uint_t aux;
     mp_copy(aux, qm1d2);
 
     u_int32_t s_tmp = 1;
     while (s_tmp < domainPow) {
         if (mp_tstbit(aux, 0)) break;
-        mp_fdiv_q_2exp(aux, aux, 1);
+        mp_shr(aux, aux, 1);
         s_tmp++;
     }
 

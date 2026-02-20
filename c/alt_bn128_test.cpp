@@ -5,7 +5,7 @@
 #include "gtest/gtest.h"
 #include "alt_bn128.hpp"
 #include "fft.hpp"
-#include "mp.hpp"
+#include "../../../build/mp.hpp"
 
 using namespace AltBn128;
 
@@ -134,13 +134,13 @@ TEST(altBn128, g1_times_3) {
     G1.add(p1, G1.one(), G1.one());
     G1.add(p1, p1, G1.one());
 
-    uint8_t scalar[MP_N];
+    mp_uint_t scalar;
     mp_uint_t x;
     mp_set(x, 3);
-    mp_export(scalar, x);
+    mp_copy(scalar, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), scalar, MP_N);
+    G1.mulByScalar(p2, G1.one(), (uint8_t*)scalar, MP_N);
 
     ASSERT_TRUE(G1.eq(p1,p2));
 }
@@ -175,43 +175,43 @@ TEST(altBn128, g1_times_5) {
     G1.dbl(p1, p1);
     G1.add(p1, p1, G1.one());
 
-    uint8_t scalar[MP_N];
+    mp_uint_t scalar;
     mp_uint_t x;
     mp_set(x, 65);
-    mp_export(scalar, x);
+    mp_copy(scalar, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), scalar, MP_N);
+    G1.mulByScalar(p2, G1.one(), (uint8_t*)scalar, MP_N);
 
     ASSERT_TRUE(G1.eq(p1,p2));
 }
 
     TEST(altBn128, g1_expToOrder) {
-    uint8_t scalar[MP_N];
+    mp_uint_t scalar;
     mp_uint_t x;
     ASSERT_EQ(mp_set(x,
         "21888242871839275222246405745257275088548364400416034343698204186575808495617",
         10
     ), 0);
-    mp_export(scalar, x);
+    mp_copy(scalar, x);
 
     G1Point p1;
-    G1.mulByScalar(p1, G1.one(), scalar, MP_N);
+    G1.mulByScalar(p1, G1.one(), (uint8_t *)scalar, MP_N);
 
     ASSERT_TRUE(G1.isZero(p1));
 }
 
     TEST(altBn128, g2_expToOrder) {
-    uint8_t scalar[MP_N];
+    mp_uint_t scalar;
     mp_uint_t x;
     ASSERT_EQ(mp_set(x,
         "21888242871839275222246405745257275088548364400416034343698204186575808495617",
         10
     ), 0);
-    mp_export(scalar, x);
+    mp_copy(scalar, x);
 
     Curve<F2Field<RawFq>>::Point p1;
-    G2.mulByScalar(p1, G2.one(), scalar, MP_N);
+    G2.mulByScalar(p1, G2.one(), (uint8_t *)scalar, MP_N);
 
     ASSERT_TRUE(G2.isZero(p1));
 }
@@ -219,7 +219,7 @@ TEST(altBn128, g1_times_5) {
 TEST(altBn128, multiExp) {
     int NMExp = 40000;
 
-    typedef uint8_t Scalar[MP_N];
+    typedef mp_uint_t Scalar;
 
     Scalar *scalars = new Scalar[NMExp];
     G1PointAffine *bases = new G1PointAffine[NMExp];
@@ -234,20 +234,20 @@ TEST(altBn128, multiExp) {
 
         mp_uint_t x;
         mp_set(x, (uint64_t)(i + 1));
-        mp_export(scalars[i], x);
+        mp_copy(scalars[i], x);
         acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
     G1Point p1;
     G1.multiMulByScalar(p1, bases, (uint8_t *)scalars, MP_N, NMExp);
 
-    uint8_t sAcc[MP_N];
+    mp_uint_t sAcc;
     mp_uint_t x;
     mp_set(x, acc);
-    mp_export(sAcc, x);
+    mp_copy(sAcc, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), sAcc, MP_N);
+    G1.mulByScalar(p2, G1.one(), (uint8_t *)sAcc, MP_N);
 
     ASSERT_TRUE(G1.eq(p1, p2));
 
@@ -258,7 +258,7 @@ TEST(altBn128, multiExp) {
 TEST(altBn128, multiExpMSM) {
     int NMExp = 40000;
 
-    typedef uint8_t Scalar[MP_N];
+    typedef mp_uint_t Scalar;
 
     Scalar *scalars = new Scalar[NMExp];
     G1PointAffine *bases = new G1PointAffine[NMExp];
@@ -273,20 +273,20 @@ TEST(altBn128, multiExpMSM) {
 
         mp_uint_t x;
         mp_set(x, (uint64_t)(i + 1));
-        mp_export(scalars[i], x);
+        mp_copy(scalars[i], x);
         acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
     G1Point p1;
     G1.multiMulByScalarMSM(p1, bases, (uint8_t *)scalars, MP_N, NMExp);
 
-    uint8_t sAcc[MP_N];
+    mp_uint_t sAcc;
     mp_uint_t x;
     mp_set(x, acc);
-    mp_export(sAcc, x);
+    mp_copy(sAcc, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), sAcc, MP_N);
+    G1.mulByScalar(p2, G1.one(), (uint8_t *)sAcc, MP_N);
 
     ASSERT_TRUE(G1.eq(p1, p2));
 

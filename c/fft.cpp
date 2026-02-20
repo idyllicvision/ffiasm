@@ -5,7 +5,6 @@
 #include <cstring>
 
 #include "misc.hpp"
-#include "mp.hpp"
 #include "../../../build/mp.hpp"
 
 using namespace std;

@@ -36,29 +36,29 @@ void addFunction(std::string name, FuncAny f, int nOps) {
 }
 
 void fillMap() {
-    addFunction("add", (FuncAny)Fr_add, 2);
-    addFunction("sub", (FuncAny)Fr_sub, 2);
-    addFunction("neg", (FuncAny)Fr_neg, 1);
-    addFunction("mul", (FuncAny)Fr_mul, 2);
+    addFunction("add",    (FuncAny)Fr_add,    2);
+    addFunction("sub",    (FuncAny)Fr_sub,    2);
+    addFunction("neg",    (FuncAny)Fr_neg,    1);
+    addFunction("mul",    (FuncAny)Fr_mul,    2);
     addFunction("square", (FuncAny)Fr_square, 1);
-    addFunction("idiv", (FuncAny)Fr_idiv, 2);
-    addFunction("inv", (FuncAny)Fr_inv, 1);
-    addFunction("div", (FuncAny)Fr_div, 2);
-    addFunction("band", (FuncAny)Fr_band, 2);
-    addFunction("bor", (FuncAny)Fr_bor, 2);
-    addFunction("bxor", (FuncAny)Fr_bxor, 2);
-    addFunction("bnot", (FuncAny)Fr_bnot, 1);
-    addFunction("eq", (FuncAny)Fr_eq, 2);
-    addFunction("neq", (FuncAny)Fr_neq, 2);
-    addFunction("lt", (FuncAny)Fr_lt, 2);
-    addFunction("gt", (FuncAny)Fr_gt, 2);
-    addFunction("leq", (FuncAny)Fr_leq, 2);
-    addFunction("geq", (FuncAny)Fr_geq, 2);
-    addFunction("land", (FuncAny)Fr_land, 2);
-    addFunction("lor", (FuncAny)Fr_lor, 2);
-    addFunction("lnot", (FuncAny)Fr_lnot, 1);
-    addFunction("shl", (FuncAny)Fr_shl, 2);
-    addFunction("shr", (FuncAny)Fr_shr, 2);
+    addFunction("idiv",   (FuncAny)Fr_idiv,   2);
+    addFunction("inv",    (FuncAny)Fr_inv,    1);
+    addFunction("div",    (FuncAny)Fr_div,    2);
+    addFunction("band",   (FuncAny)Fr_band,   2);
+    addFunction("bor",    (FuncAny)Fr_bor,    2);
+    addFunction("bxor",   (FuncAny)Fr_bxor,   2);
+    addFunction("bnot",   (FuncAny)Fr_bnot,   1);
+    addFunction("eq",     (FuncAny)Fr_eq,     2);
+    addFunction("neq",    (FuncAny)Fr_neq,    2);
+    addFunction("lt",     (FuncAny)Fr_lt,     2);
+    addFunction("gt",     (FuncAny)Fr_gt,     2);
+    addFunction("leq",    (FuncAny)Fr_leq,    2);
+    addFunction("geq",    (FuncAny)Fr_geq,    2);
+    addFunction("land",   (FuncAny)Fr_land,   2);
+    addFunction("lor",    (FuncAny)Fr_lor,    2);
+    addFunction("lnot",   (FuncAny)Fr_lnot,   1);
+    addFunction("shl",    (FuncAny)Fr_shl,    2);
+    addFunction("shr",    (FuncAny)Fr_shr,    2);
 }
 
 u_int64_t readInt(std::string &s) {
@@ -72,7 +72,7 @@ u_int64_t readInt(std::string &s) {
 void pushNumber(std::vector<std::string> &v) {
     u_int64_t a;
     if ((v.size()<1) || (v.size() > (Fr_N64+1))) {
-        printf("Invalid Size: %d  -  %d \n", v.size(), Fr_N64);
+        printf("Invalid Size: %zu  -  %d \n", v.size(), Fr_N64);
         throw std::runtime_error("Invalid number of parameters for number");
     }
     FrElement e;
@@ -155,10 +155,9 @@ int main(void)
     // Print the elements in the stack
     //
     for (int i=0; i<stack.size(); i++) {
-        char *s;
+        std::string s;
         s = Fr_element2str(&stack[i]);
-        printf("%s\n", s);
-        free(s);
+        printf("%s\n", s.c_str());
     }
     return EXIT_SUCCESS;
 }

@@ -54,7 +54,7 @@ async function buildField(q, name) {
     const raw_generic_cpp = await renderFile(path.join(__dirname, "fr_raw_generic.cpp.ejs"), builder);
     const raw_arm64_s = await renderFile(path.join(__dirname, "fr_raw_arm64.s.ejs"), builder);
 
-    return {asm: asm, hpp: hpp, cpp: cpp, element_hpp: element_hpp, generic_cpp: generic_cpp, raw_generic_cpp: raw_generic_cpp, raw_arm64_s: raw_arm64_s};
+    return {n64: builder.n64, asm: asm, hpp: hpp, cpp: cpp, element_hpp: element_hpp, generic_cpp: generic_cpp, raw_generic_cpp: raw_generic_cpp, raw_arm64_s: raw_arm64_s};
 }
 
 if (runningAsScript) {

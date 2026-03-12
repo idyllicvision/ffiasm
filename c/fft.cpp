@@ -1,13 +1,10 @@
 #include <thread>
 #include <vector>
-#include <stdexcept>
-#include <cstdint>
-#include <cstring>
-
 #include "misc.hpp"
-#include "../../../build/mp.hpp"
 
 using namespace std;
+
+// The function we want to execute on the new thread.
 
 template <typename Field>
 u_int32_t FFT<Field>::log2(u_int64_t n) {
@@ -26,7 +23,7 @@ static inline u_int64_t BR(u_int64_t x, u_int64_t domainPow)
     x = ((x & 0xFF00FF00) >> 8) | ((x & 0x00FF00FF) << 8);
     x = ((x & 0xF0F0F0F0) >> 4) | ((x & 0x0F0F0F0F) << 4);
     x = ((x & 0xCCCCCCCC) >> 2) | ((x & 0x33333333) << 2);
-    return (((x & 0xAAAAAAAA) >> 1) | ((x & 0x55555555) << 1)) >> (MP_N-domainPow);
+    return (((x & 0xAAAAAAAA) >> 1) | ((x & 0x55555555) << 1)) >> (32-domainPow);
 }
 
 #define ROOT(s,j) (rootsOfUnit[(1<<(s))+(j)])
@@ -37,86 +34,102 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
 {
     f = Field::field;
 
-    static_assert(Field::N64 == 4, "FFT expects 256-bit field elements (4x64 limbs).");
-
     u_int32_t domainPow = log2(maxDomainSize);
 
-    Element qm1_norm;
-    f.fromMontgomery(qm1_norm, f.negOne());
+    typedef uint64_t mp_uint_t[Field::N64];
 
-    mp_uint_t qm1;
-    std::memcpy(qm1, (const void*)qm1_norm.v, sizeof(qm1));
+    mp_uint_t m_qm1d2;
+    mp_uint_t m_q;
+    mp_uint_t m_nqr;
+    mp_uint_t m_aux;
 
-    mp_uint_t qm1d2;
-    mp_shr(qm1d2, qm1, 1);
+    // mpz_init(...)
+    mp_set(m_qm1d2, 0);
+    mp_set(m_q, 0);
+    mp_set(m_nqr, 0);
+    mp_set(m_aux, 0);
 
-    Element cand, res;
-    uint64_t cand_ui = 2;
-    for (;;) {
-        f.fromUI(cand, cand_ui);
-        f.exp(res, cand,
-              reinterpret_cast<uint8_t*>(qm1d2),
-              (unsigned)sizeof(qm1d2));
-        if (!f.eq(res, f.one())) {
-            f.copy(nqr, cand);
-            break;
-        }
-        cand_ui++;
+    // f.toMpz(m_aux, f.negOne());
+    // mpz_add_ui(m_q, m_aux, 1);
+    // mpz_fdiv_q_2exp(m_qm1d2, m_aux, 1);
+    f.toMP(m_aux, f.negOne());      // generator должен дать toMp/fromMp (аналог toMpz/fromMpz)
+    mp_add(m_q, m_aux, 1);
+    mp_shr(m_qm1d2, m_aux, 1);
+
+    // mpz_set_ui(m_nqr, 2);
+    // mpz_powm(m_aux, m_nqr, m_qm1d2, m_q);
+    // while (mpz_cmp_ui(m_aux, 1) == 0) { ... }
+    mp_set(m_nqr, 2);
+
+    mp_uint_t one;
+    mp_set(one, 1);
+
+    mp_pow_mod(m_aux, m_nqr, m_qm1d2, m_q);
+    while (mp_cmp(m_aux, one) == 0) {
+        mp_add(m_nqr, m_nqr, 1);
+        mp_pow_mod(m_aux, m_nqr, m_qm1d2, m_q);
     }
 
-    mp_uint_t aux;
-    mp_copy(aux, qm1d2);
+    // f.fromMpz(nqr, m_nqr);
+    f.fromMP(nqr, m_nqr);
 
-    u_int32_t s_tmp = 1;
-    while (s_tmp < domainPow) {
-        if (mp_tstbit(aux, 0)) break;
-        mp_shr(aux, aux, 1);
-        s_tmp++;
+    // s = 1;
+    // mpz_set(m_aux, m_qm1d2);
+    // while ((!mpz_tstbit(m_aux, 0))&&(s<domainPow)) { mpz_fdiv_q_2exp(...); s++; }
+    s = 1;
+    mp_copy(m_aux, m_qm1d2);
+    while ((!mp_tstbit(m_aux, 0)) && (s < domainPow)) {
+        mp_shr(m_aux, m_aux, 1);
+        s++;
     }
 
-    if (s_tmp < domainPow) {
+    if (s < domainPow) {
         throw std::range_error("Domain size too big for the curve");
     }
 
-    s = s_tmp;
-    uint64_t nRoots = 1ULL << s;
+    uint64_t nRoots = 1LL << s;
 
     roots = new Element[nRoots];
-    powTwoInv = new Element[s + 1];
+    powTwoInv = new Element[s+1];
 
     f.copy(roots[0], f.one());
     f.copy(powTwoInv[0], f.one());
-
     if (nRoots > 1) {
-        f.exp(roots[1], nqr,
-              reinterpret_cast<uint8_t*>(aux),
-              (unsigned)sizeof(aux));
+        // mpz_powm(m_aux, m_nqr, m_aux, m_q);
+        // f.fromMpz(roots[1], m_aux);
+        mp_pow_mod(m_aux, m_nqr, m_aux, m_q);
+        f.fromMP(roots[1], m_aux);
 
-        Element two;
-        f.fromUI(two, 2);
-        f.inv(powTwoInv[1], two);
+        // mpz_set_ui(m_aux, 2);
+        // mpz_invert(m_aux, m_aux, m_q);
+        // f.fromMpz(powTwoInv[1], m_aux);
+        mp_set(m_aux, 2);
+        mp_inv_mod(m_aux, m_aux, m_q);
+        f.fromMP(powTwoInv[1], m_aux);
     }
 
     threadPool.parallelBlock([&] (uint64_t nThreads, uint64_t idThread) {
-        uint64_t increment = nRoots / nThreads;
-        uint64_t start = (idThread == 0) ? 2 : idThread * increment;
-        uint64_t end   = (idThread == nThreads - 1) ? nRoots : (idThread + 1) * increment;
 
+        uint64_t increment = nRoots / nThreads;
+        uint64_t start = idThread==0 ? 2 : idThread * increment;
+        uint64_t end   = idThread==nThreads-1 ? nRoots : (idThread+1) * increment;
         if (end > start) {
             f.exp(roots[start], roots[1], (uint8_t *)(&start), sizeof(start));
         }
-        for (uint64_t i = start + 1; i < end; i++) {
+        for (uint64_t i=start+1; i<end; i++) {
             f.mul(roots[i], roots[i-1], roots[1]);
         }
     });
 
-    Element check;
-    f.mul(check, roots[nRoots - 1], roots[1]);
-    assert(f.eq(check, f.one()));
+    Element aux;
+    f.mul(aux, roots[nRoots-1], roots[1] );
+    assert(f.eq(aux, f.one()));
 
-    for (uint64_t i = 2; i <= s; i++) {
+    for (uint64_t i=2; i<=s; i++) {
         f.mul(powTwoInv[i], powTwoInv[i-1], powTwoInv[1]);
     }
+
+    // mpz_clear(...) не нужен
 }
 
 template <typename Field>
@@ -125,15 +138,50 @@ FFT<Field>::~FFT() {
     delete[] powTwoInv;
 }
 
+/*
+template <typename Field>
+void FFT<Field>::reversePermutationInnerLoop(Element *a, u_int64_t from, u_int64_t to, u_int32_t domainPow) {
+    Element tmp;
+    for (u_int64_t i=from; i<to; i++) {
+        u_int64_t r = BR(i, domainPow);
+        if (i>r) {
+            f.copy(tmp, a[i]);
+            f.copy(a[i], a[r]);
+            f.copy(a[r], tmp);
+        }
+    }
+}
+
+
+template <typename Field>
+void FFT<Field>::reversePermutation(Element *a, u_int64_t n) {
+    int domainPow = log2(n);
+    std::vector<std::thread> threads(nThreads-1);
+    u_int64_t increment = n / nThreads;
+    if (increment) {
+        for (u_int64_t i=0; i<nThreads-1; i++) {
+            threads[i] = std::thread (&FFT<Field>::reversePermutationInnerLoop, this, a, i*increment, (i+1)*increment, domainPow);
+        }
+    }
+    reversePermutationInnerLoop(a, (nThreads-1)*increment, n, domainPow);
+    if (increment) {
+        for (u_int32_t i=0; i<nThreads-1; i++) {
+            if (threads[i].joinable()) threads[i].join();
+        }
+    }
+}
+*/
+
+
 template <typename Field>
 void FFT<Field>::reversePermutation(Element *a, u_int64_t n) {
     int domainPow = log2(n);
 
     threadPool.parallelFor(0, n, [&] (int begin, int end, int numThread) {
-        for (u_int64_t i = (u_int64_t)begin; i < (u_int64_t)end; i++) {
+        for (u_int64_t i=begin; i<end; i++) {
             Element tmp;
             u_int64_t r = BR(i, domainPow);
-            if (i > r) {
+            if (i>r) {
                 f.copy(tmp, a[i]);
                 f.copy(a[i], a[r]);
                 f.copy(a[r], tmp);
@@ -142,56 +190,57 @@ void FFT<Field>::reversePermutation(Element *a, u_int64_t n) {
     });
 }
 
+
 template <typename Field>
 void FFT<Field>::fft(Element *a, u_int64_t n) {
     reversePermutation(a, n);
-    u_int64_t domainPow = log2(n);
+    u_int64_t domainPow =log2(n);
     assert(((u_int64_t)1 << domainPow) == n);
-
-    for (u_int32_t s = 1; s <= domainPow; s++) {
+    for (u_int32_t s=1; s<=domainPow; s++) {
         u_int64_t m = 1 << s;
         u_int64_t mdiv2 = m >> 1;
 
-        threadPool.parallelFor(0, (n >> 1), [&] (int begin, int end, int numThread) {
-            for (u_int64_t i = (u_int64_t)begin; i < (u_int64_t)end; i++) {
+        threadPool.parallelFor(0, (n>>1), [&] (int begin, int end, int numThread) {
+            for (u_int64_t i=begin; i< end; i++) {
                 Element t;
                 Element u;
-                u_int64_t k = (i / mdiv2) * m;
-                u_int64_t j = i % mdiv2;
+                u_int64_t k=(i/mdiv2)*m;
+                u_int64_t j=i%mdiv2;
 
-                f.mul(t, root(s, j), a[k + j + mdiv2]);
-                f.copy(u, a[k + j]);
-                f.add(a[k + j], t, u);
-                f.sub(a[k + j + mdiv2], u, t);
+                f.mul(t, root(s, j), a[k+j+mdiv2]);
+                f.copy(u,a[k+j]);
+                f.add(a[k+j], t, u);
+                f.sub(a[k+j+mdiv2], u, t);
             }
         });
     }
 }
 
 template <typename Field>
-void FFT<Field>::ifft(Element *a, u_int64_t n) {
+void FFT<Field>::ifft(Element *a, u_int64_t n ) {
     fft(a, n);
-    u_int64_t domainPow = log2(n);
-    u_int64_t nDiv2 = n >> 1;
+    u_int64_t domainPow =log2(n);
+    u_int64_t nDiv2= n >> 1;
 
     threadPool.parallelFor(1, nDiv2, [&] (int begin, int end, int numThread) {
-        for (u_int64_t i = (u_int64_t)begin; i < (u_int64_t)end; i++) {
+        for (u_int64_t i=begin; i<end; i++) {
             Element tmp;
-            u_int64_t r = n - i;
+            u_int64_t r = n-i;
             f.copy(tmp, a[i]);
             f.mul(a[i], a[r], powTwoInv[domainPow]);
             f.mul(a[r], tmp, powTwoInv[domainPow]);
         }
     });
-
     f.mul(a[0], a[0], powTwoInv[domainPow]);
     f.mul(a[n >> 1], a[n >> 1], powTwoInv[domainPow]);
 }
 
+
+
 template <typename Field>
-void FFT<Field>::printVector(Element *a, u_int64_t n) {
+void FFT<Field>::printVector(Element *a, u_int64_t n ) {
     cout << "[" << endl;
-    for (u_int64_t i = 0; i < n; i++) {
+    for (u_int64_t i=0; i<n; i++) {
         cout << f.toString(a[i]) << endl;
     }
     cout << "]" << endl;

@@ -1,15 +1,23 @@
 #include "<%=name.toLowerCase()+".hpp"%>"
 #include <cstdint>
 #include <cstring>
-#include <cassert>
 
 <%=name%>Element <%=name%>_q  = {0, 0x80000000, {<%= constantElement(q) %>}};
 <%=name%>Element <%=name%>_R2 = {0, 0x80000000, {<%= constantElement(bigInt.one.shiftLeft(n64*64*2).mod(q)) %>}};
 <%=name%>Element <%=name%>_R3 = {0, 0x80000000, {<%= constantElement(bigInt.one.shiftLeft(n64*64*3).mod(q)) %>}};
 
 static <%=name%>RawElement half = {<%= constantElement(q.shiftRight(1)) %>};
-static <%=name%>RawElement zero = {0};
+static <%=name%>RawElement <%=name%>_rawR2 = {<%= constantElement(bigInt.one.shiftLeft(n64*64*2).mod(q)) %>};
 
+void <%=name%>_rawMSquare(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA)
+{
+    <%=name%>_rawMMul(pRawResult, pRawA, pRawA);
+}
+
+void <%=name%>_rawToMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA)
+{
+    <%=name%>_rawMMul(pRawResult, pRawA, <%=name%>_rawR2);
+}
 
 void <%=name%>_copy(P<%=name%>Element r, const P<%=name%>Element a)
 {
@@ -271,6 +279,7 @@ void <%=name%>_mul(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
     }
 }
 
+
 void <%=name%>_toLongNormal(P<%=name%>Element r, P<%=name%>Element a)
 {
     if (a->type & <%=name%>_LONG)
@@ -309,7 +318,7 @@ void <%=name%>_toMontgomery(P<%=name%>Element r, P<%=name%>Element a)
     }
     else if (a->shortVal < 0)
     {
-        int64_t a_shortVal = a->shortVal;
+       int64_t a_shortVal = a->shortVal;
        <%=name%>_rawMMul1(r->longVal, <%=name%>_R2.longVal, -a_shortVal);
        <%=name%>_rawNeg(r->longVal, r->longVal);
 
@@ -327,6 +336,7 @@ void <%=name%>_copyn(P<%=name%>Element r, P<%=name%>Element a, int n)
 {
     std::memcpy(r, a, n * sizeof(<%=name%>Element));
 }
+
 
 static inline int has_add32_overflow(int64_t val)
 {
@@ -769,7 +779,7 @@ int <%=name%>_longNormal(P<%=name%>Element pE)
          return <%=name%>_longNeg(pE);
     }
 
-    if (memcmp(&pE->longVal[1], zero, (sizeof(pE->longVal) - sizeof(pE->longVal[0]))))
+    if (pE->longVal[1] || pE->longVal[2] || pE->longVal[3])
     {
         return <%=name%>_longNeg(pE);
     }
@@ -1499,7 +1509,7 @@ static inline void and_s1l2n(P<%=name%>Element r, P<%=name%>Element a, P<%=name%
 
     if (a->shortVal >= 0)
     {
-        a_n = {0, 0, {(uint64_t)a->shortVal}};
+        a_n = {0, 0, {(uint64_t)a->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -1520,7 +1530,7 @@ static inline void and_l1ms2(P<%=name%>Element r, P<%=name%>Element a, P<%=name%
 
     if (b->shortVal >= 0)
     {
-        b_n = {0, 0, {(uint64_t)b->shortVal}};
+        b_n = {0, 0, {(uint64_t)b->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -1541,7 +1551,7 @@ static inline void and_s1l2m(P<%=name%>Element r, P<%=name%>Element a, P<%=name%
 
     if (a->shortVal >= 0)
     {
-        a_n = {0, 0, {(uint64_t)a->shortVal}};
+        a_n = {0, 0, {(uint64_t)a->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -1559,7 +1569,7 @@ static inline void and_l1ns2(P<%=name%>Element r, P<%=name%>Element a, P<%=name%
 
     if (b->shortVal >= 0)
     {
-        b_n = {0, 0, {(uint64_t)b->shortVal}};
+        b_n = {0, 0, {(uint64_t)b->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -1791,7 +1801,7 @@ static inline void do_shr(P<%=name%>Element r, P<%=name%>Element a, uint64_t b)
 
 static inline void <%=name%>_shr_big_shift(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b)
 {
-    static <%=name%>RawElement max_shift = {<%= q.bitLength() %>};
+    static <%=name%>RawElement max_shift = {<%= q.bitLength() %>, 0, 0, 0};
 
     <%=name%>RawElement shift;
 
@@ -1809,7 +1819,7 @@ static inline void <%=name%>_shr_big_shift(P<%=name%>Element r, P<%=name%>Elemen
 
 static inline void <%=name%>_shr_long(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b)
 {
-    static <%=name%>RawElement max_shift = {<%= q.bitLength() %>};
+    static <%=name%>RawElement max_shift = {<%= q.bitLength() %>, 0, 0, 0};
 
     if (<%=name%>_rawCmp(b->longVal, max_shift) >= 0)
     {
@@ -1867,7 +1877,7 @@ void <%=name%>_shr(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
 
 static inline void <%=name%>_shl_big_shift(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b)
 {
-    static <%=name%>RawElement max_shift = {<%= q.bitLength() %>};
+    static <%=name%>RawElement max_shift = {<%= q.bitLength() %>, 0, 0, 0};
 
     <%=name%>RawElement shift;
 
@@ -1885,7 +1895,7 @@ static inline void <%=name%>_shl_big_shift(P<%=name%>Element r, P<%=name%>Elemen
 
 static inline void <%=name%>_shl_long(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b)
 {
-    static <%=name%>RawElement max_shift = {<%= q.bitLength() %>};
+    static <%=name%>RawElement max_shift = {<%= q.bitLength() %>, 0, 0, 0};
 
     if (<%=name%>_rawCmp(b->longVal, max_shift) >= 0)
     {
@@ -2014,7 +2024,7 @@ static inline void or_s1l2m(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>
 
     if (a->shortVal >= 0)
     {
-        a_n = {0, 0, {(uint64_t)a->shortVal}};
+        a_n = {0, 0, {(uint64_t)a->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -2032,7 +2042,7 @@ static inline void or_s1l2n(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>
 
     if (a->shortVal >= 0)
     {
-        a_n = {0, 0, {(uint64_t)a->shortVal}};
+        a_n = {0, 0, {(uint64_t)a->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -2050,7 +2060,7 @@ static inline void or_l1ns2(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>
 
     if (b->shortVal >= 0)
     {
-        b_n = {0, 0, {(uint64_t)b->shortVal}};
+        b_n = {0, 0, {(uint64_t)b->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -2071,7 +2081,7 @@ static inline void or_l1ms2(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>
 
     if (b->shortVal >= 0)
     {
-        b_n = {0, 0, {(uint64_t)b->shortVal}};
+        b_n = {0, 0, {(uint64_t)b->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -2201,7 +2211,7 @@ static inline void xor_s1l2n(P<%=name%>Element r, P<%=name%>Element a, P<%=name%
 
     if (a->shortVal >= 0)
     {
-        a_n = {0, 0, {(uint64_t)a->shortVal}};
+        a_n = {0, 0, {(uint64_t)a->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -2222,7 +2232,7 @@ static inline void xor_s1l2m(P<%=name%>Element r, P<%=name%>Element a, P<%=name%
 
     if (a->shortVal >= 0)
     {
-        a_n = {0, 0, {(uint64_t)a->shortVal}};
+        a_n = {0, 0, {(uint64_t)a->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -2240,7 +2250,7 @@ static inline void xor_l1ns2(P<%=name%>Element r, P<%=name%>Element a, P<%=name%
 
     if (b->shortVal >= 0)
     {
-        b_n = {0, 0, {(uint64_t)b->shortVal}};
+        b_n = {0, 0, {(uint64_t)b->shortVal, 0, 0, 0}};
     }
     else
     {
@@ -2261,7 +2271,7 @@ static inline void xor_l1ms2(P<%=name%>Element r, P<%=name%>Element a, P<%=name%
 
     if (b->shortVal >= 0)
     {
-        b_n = {0, 0, {(uint64_t)b->shortVal}};
+        b_n = {0, 0, {(uint64_t)b->shortVal, 0, 0, 0}};
     }
     else
     {

@@ -103,26 +103,26 @@ int <%=name%>_rawIsEq(const <%=name%>RawElement pRawA, const <%=name%>RawElement
 void <%=name%>_rawMMul(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, const <%=name%>RawElement pRawB)
 {
     constexpr size_t N = <%=name%>_N64 + 1;
-    const uint64_t  *mq = <%=name%>_rawq;
+    const uint64_t *mq = <%=name%>_rawq;
 
-    uint64_t  np0;
+    uint64_t np0;
 
 <% for (let i=0; i<n64; i++) { %>
-    uint64_t  product<%=i%>[N] = {0};
+    uint64_t product<%=i%>[N] = {0};
 <% } %>
 
     product0[<%=n64%>] = mp_mul(product0, pRawB, pRawA[0]);
 
 <% for (let i=0; i<n64-1; i++) { %>
     np0 = <%=name%>_np * product<%=i%>[0];
-    product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, np0);
+    product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
 
-    product<%=i+1%>[<%=n64%>] = mp_addmul(product<%=i+1%>, pRawB, pRawA[<%=i+1%>]);
+    product<%=i+1%>[<%=n64%>] = mp_addmul(product<%=i+1%>, pRawB, <%=name%>_N64, pRawA[<%=i+1%>]);
     mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%>+1, N-1);
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
-    mp_addmul(product<%=n64-1%>, mq, np0);
+    mp_addmul(product<%=n64-1%>, mq, N, np0);
 
     mp_copy(pRawResult, product<%=n64-1%>+1);
 
@@ -135,24 +135,24 @@ void <%=name%>_rawMMul(<%=name%>RawElement pRawResult, const <%=name%>RawElement
 void <%=name%>_rawMMul1(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, uint64_t pRawB)
 {
     constexpr size_t N = <%=name%>_N64 + 1;
-    const uint64_t  *mq = <%=name%>_rawq;
+    const uint64_t *mq = <%=name%>_rawq;
 
-    uint64_t  np0;
+    uint64_t np0;
 
 <% for (let i=0; i<n64; i++) { %>
-    uint64_t  product<%=i%>[N] = {0};
+    uint64_t product<%=i%>[N] = {0};
 <% } %>
 
     product0[<%=n64%>] = mp_mul(product0, pRawA, pRawB);
 
 <% for (let i=0; i<n64-1; i++) { %>
     np0 = <%=name%>_np * product<%=i%>[0];
-    product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, np0);
+    product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
     mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%>+1, N-1);
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
-    mp_addmul(product<%=n64-1%>, mq, np0);
+    mp_addmul(product<%=n64-1%>, mq, N, np0);
 
     mp_copy(pRawResult, product<%=n64-1%>+1);
 
@@ -165,25 +165,25 @@ void <%=name%>_rawMMul1(<%=name%>RawElement pRawResult, const <%=name%>RawElemen
 void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA)
 {
     constexpr size_t N = <%=name%>_N64 + 1;
-    const uint64_t  *mq = <%=name%>_rawq;
+    const uint64_t *mq = <%=name%>_rawq;
 
-    uint64_t  np0;
+    uint64_t np0;
 
-    uint64_t  product0[N];
+    uint64_t product0[N];
 <% for (let i=1; i<n64; i++) { %>
-    uint64_t  product<%=i%>[N] = {0};
+    uint64_t product<%=i%>[N] = {0};
 <% } %>
 
     mp_copy(product0, pRawA); product0[<%=n64%>] = 0;
 
 <% for (let i=0; i<n64-1; i++) { %>
     np0 = <%=name%>_np * product<%=i%>[0];
-    product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, np0);
+    product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
     mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%>+1, N-1);
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
-    mp_addmul(product<%=n64-1%>, mq, np0);
+    mp_addmul(product<%=n64-1%>, mq, N, np0);
 
     mp_copy(pRawResult, product<%=n64-1%>+1);
 

@@ -3,15 +3,15 @@
 #include <cstring>
 
 static uint64_t     <%=name%>_rawq[] = {<%= constantElement(q) %>, 0};
-static const uint64_t <%=name%>_np   =  0x<%= (bigInt.one.shiftLeft(64)).minus(q.modInv(bigInt.one.shiftLeft(64))).toString(16) %>ULL;
-static uint64_t     lboMask   =  0x<%= bigInt("10000000000000000",16).shiftRight(n64*64 - q.bitLength()).minus(bigInt.one).toString(16) %>;
+static const uint64_t <%=name%>_np   = 0x<%= (bigInt.one.shiftLeft(64)).minus(q.modInv(bigInt.one.shiftLeft(64))).toString(16) %>ULL;
+static uint64_t     lboMask   = 0x<%= bigInt("10000000000000000",16).shiftRight(n64*64 - q.bitLength()).minus(bigInt.one).toString(16) %>;
 
 
 void <%=name%>_rawAdd(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, const <%=name%>RawElement pRawB)
 {
     uint64_t carry = mp_add(pRawResult, pRawA, pRawB);
 
-    if(carry || mp_cmp(pRawResult, <%=name%>_rawq) >= 0)
+    if (carry || mp_cmp(pRawResult, <%=name%>_rawq) >= 0)
     {
         mp_sub(pRawResult, pRawResult, <%=name%>_rawq);
     }
@@ -21,7 +21,7 @@ void <%=name%>_rawAddLS(<%=name%>RawElement pRawResult, <%=name%>RawElement pRaw
 {
     uint64_t carry = mp_add(pRawResult, pRawA, rawB);
 
-    if(carry || mp_cmp(pRawResult, <%=name%>_rawq) >= 0)
+    if (carry || mp_cmp(pRawResult, <%=name%>_rawq) >= 0)
     {
         mp_sub(pRawResult, pRawResult, <%=name%>_rawq);
     }
@@ -31,7 +31,7 @@ void <%=name%>_rawSub(<%=name%>RawElement pRawResult, const <%=name%>RawElement 
 {
     uint64_t carry = mp_sub(pRawResult, pRawA, pRawB);
 
-    if(carry)
+    if (carry)
     {
         mp_add(pRawResult, pRawResult, <%=name%>_rawq);
     }
@@ -44,11 +44,12 @@ void <%=name%>_rawSubRegular(<%=name%>RawElement pRawResult, <%=name%>RawElement
 
 void <%=name%>_rawSubSL(<%=name%>RawElement pRawResult, uint64_t rawA, <%=name%>RawElement pRawB)
 {
-    <%=name%>RawElement pRawA = {rawA, 0, 0, 0};
+    <%=name%>RawElement pRawA = {0};
+    pRawA[0] = rawA;
 
     uint64_t carry = mp_sub(pRawResult, pRawA, pRawB);
 
-    if(carry)
+    if (carry)
     {
         mp_add(pRawResult, pRawResult, <%=name%>_rawq);
     }
@@ -58,7 +59,7 @@ void <%=name%>_rawSubLS(<%=name%>RawElement pRawResult, <%=name%>RawElement pRaw
 {
     uint64_t carry = mp_sub(pRawResult, pRawA, rawB);
 
-    if(carry)
+    if (carry)
     {
         mp_add(pRawResult, pRawResult, <%=name%>_rawq);
     }
@@ -76,7 +77,7 @@ void <%=name%>_rawNeg(<%=name%>RawElement pRawResult, const <%=name%>RawElement 
     }
 }
 
-//  Substracts a long element and a short element form 0
+// Subtracts a long element and a short element from 0
 void <%=name%>_rawNegLS(<%=name%>RawElement pRawResult, <%=name%>RawElement pRawA, uint64_t rawB)
 {
     uint64_t carry1 = mp_sub(pRawResult, <%=name%>_rawq, rawB);
@@ -118,13 +119,13 @@ void <%=name%>_rawMMul(<%=name%>RawElement pRawResult, const <%=name%>RawElement
     product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
 
     product<%=i+1%>[<%=n64%>] = mp_addmul(product<%=i+1%>, pRawB, <%=name%>_N64, pRawA[<%=i+1%>]);
-    mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%>+1, N-1);
+    mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
     mp_addmul(product<%=n64-1%>, mq, N, np0);
 
-    mp_copy(pRawResult, product<%=n64-1%>+1);
+    mp_copy(pRawResult, product<%=n64-1%> + 1);
 
     if (mp_cmp(pRawResult, mq) >= 0)
     {
@@ -148,13 +149,13 @@ void <%=name%>_rawMMul1(<%=name%>RawElement pRawResult, const <%=name%>RawElemen
 <% for (let i=0; i<n64-1; i++) { %>
     np0 = <%=name%>_np * product<%=i%>[0];
     product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
-    mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%>+1, N-1);
+    mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
     mp_addmul(product<%=n64-1%>, mq, N, np0);
 
-    mp_copy(pRawResult, product<%=n64-1%>+1);
+    mp_copy(pRawResult, product<%=n64-1%> + 1);
 
     if (mp_cmp(pRawResult, mq) >= 0)
     {
@@ -174,18 +175,19 @@ void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>
     uint64_t product<%=i%>[N] = {0};
 <% } %>
 
-    mp_copy(product0, pRawA); product0[<%=n64%>] = 0;
+    mp_copy(product0, pRawA);
+    product0[<%=n64%>] = 0;
 
 <% for (let i=0; i<n64-1; i++) { %>
     np0 = <%=name%>_np * product<%=i%>[0];
     product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
-    mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%>+1, N-1);
+    mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
     mp_addmul(product<%=n64-1%>, mq, N, np0);
 
-    mp_copy(pRawResult, product<%=n64-1%>+1);
+    mp_copy(pRawResult, product<%=n64-1%> + 1);
 
     if (mp_cmp(pRawResult, mq) >= 0)
     {
@@ -230,7 +232,7 @@ void <%=name%>_rawCopyS2L(<%=name%>RawElement pRawResult, int64_t val)
     if (val < 0)
     {
 <% for (let i=1; i<n64; i++) { %>
-        pRawResult[<%=i%>] = -1;
+        pRawResult[<%=i%>] = (uint64_t)-1;
 <% } %>
 
         mp_add(pRawResult, pRawResult, <%=name%>_rawq);
@@ -280,7 +282,9 @@ void <%=name%>_rawShl(<%=name%>RawElement r, <%=name%>RawElement a, uint64_t b)
     r[<%=n64-1%>] &= lboMask;
 
     if (mp_cmp(r, <%=name%>_rawq) >= 0)
+    {
         mp_sub(r, r, <%=name%>_rawq);
+    }
 }
 
 void <%=name%>_rawShr(<%=name%>RawElement r, <%=name%>RawElement a, uint64_t b)

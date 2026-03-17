@@ -219,8 +219,8 @@ TEST(altBn128, g1_times_5) {
 
     ASSERT_TRUE(G2.isZero(p1));
 }
-/*
-TEST(altBn128, multiExp) {
+
+TEST(altBn128, multiExp_old) {
     int NMExp = 40000;
 
     typedef mp_uint_t Scalar;
@@ -259,7 +259,7 @@ TEST(altBn128, multiExp) {
     delete[] bases;
     delete[] scalars;
 }
-*/
+
 TEST(altBn128, multiExp) {
     int NMExp = 40000;
 
@@ -303,8 +303,8 @@ TEST(altBn128, multiExp) {
     delete[] bases;
     delete[] scalars;
 }
-/*
-TEST(altBn128, multiExpMSM) {
+
+TEST(altBn128, multiExpMSM_old) {
     int NMExp = 40000;
 
     typedef mp_uint_t Scalar;
@@ -343,7 +343,7 @@ TEST(altBn128, multiExpMSM) {
     delete[] bases;
     delete[] scalars;
 }
-*/
+
 TEST(altBn128, multiExpMSM) {
     int NMExp = 40000;
 
@@ -529,7 +529,7 @@ TEST(altBn128, fft) {
 
     delete[] a;
 }
-/*
+
 using perf_clock = std::chrono::steady_clock;
 
 static inline double bench_ms(std::function<void()> fn) {
@@ -744,7 +744,7 @@ TEST(altBn128Perf, prepare_breakdown_nogmp) {
     delete[] bases;
     delete[] scalars;
 }
-*/
+
 }  // namespace
 
 int main(int argc, char **argv) {

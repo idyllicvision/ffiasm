@@ -541,18 +541,33 @@ static inline uint64_t div_2by1(uint64_t *q, uint64_t hi, uint64_t lo, uint64_t 
     uint64_t qq  = 0;
     uint64_t rem = hi;
 
-    for (int bit = (2 * MP_N) - 1; bit >= 0; --bit) {
-        // Shift remainder left by 1 and bring next bit from lo.
-        uint64_t overflow = rem >> ((2 * MP_N) - 1);
-        rem = (rem << 1) | ((lo >> bit) & 1ULL);
+#define DIVSTEP(bit)                                                         \
+do {                                                                     \
+const uint64_t overflow = rem >> 63;                                 \
+const uint64_t rem2 = (rem << 1) | ((lo >> (bit)) & 1ULL);           \
+const uint64_t ge = (uint64_t)(overflow | (uint64_t)(rem2 >= v));    \
+rem = rem2 - (v & (0ULL - ge));                                      \
+qq |= (ge << (bit));                                                 \
+} while (0)
 
-        // If previous top bit was 1, actual shifted remainder was >= 2^64.
-        // Since rem_before < v, shifted remainder < 2*v + 1, so one subtraction is enough.
-        if (overflow || rem >= v) {
-            rem -= v;
-            qq |= (1ULL << bit);
-        }
-    }
+    DIVSTEP(63); DIVSTEP(62); DIVSTEP(61); DIVSTEP(60);
+    DIVSTEP(59); DIVSTEP(58); DIVSTEP(57); DIVSTEP(56);
+    DIVSTEP(55); DIVSTEP(54); DIVSTEP(53); DIVSTEP(52);
+    DIVSTEP(51); DIVSTEP(50); DIVSTEP(49); DIVSTEP(48);
+    DIVSTEP(47); DIVSTEP(46); DIVSTEP(45); DIVSTEP(44);
+    DIVSTEP(43); DIVSTEP(42); DIVSTEP(41); DIVSTEP(40);
+    DIVSTEP(39); DIVSTEP(38); DIVSTEP(37); DIVSTEP(36);
+    DIVSTEP(35); DIVSTEP(34); DIVSTEP(33); DIVSTEP(32);
+    DIVSTEP(31); DIVSTEP(30); DIVSTEP(29); DIVSTEP(28);
+    DIVSTEP(27); DIVSTEP(26); DIVSTEP(25); DIVSTEP(24);
+    DIVSTEP(23); DIVSTEP(22); DIVSTEP(21); DIVSTEP(20);
+    DIVSTEP(19); DIVSTEP(18); DIVSTEP(17); DIVSTEP(16);
+    DIVSTEP(15); DIVSTEP(14); DIVSTEP(13); DIVSTEP(12);
+    DIVSTEP(11); DIVSTEP(10); DIVSTEP(9);  DIVSTEP(8);
+    DIVSTEP(7);  DIVSTEP(6);  DIVSTEP(5);  DIVSTEP(4);
+    DIVSTEP(3);  DIVSTEP(2);  DIVSTEP(1);  DIVSTEP(0);
+
+#undef DIVSTEP
 
     *q = qq;
     return rem;
@@ -652,6 +667,64 @@ static inline uint64_t add_back_knuth(uint64_t *u, const uint64_t *v, int n)
 #endif
 }
 
+static inline uint64_t mp_invert_limb_norm(uint64_t d)
+{
+#if defined(__SIZEOF_INT128__)
+    // d is normalized (top bit set). Use a GMP-style 64-bit preinverse:
+    // floor((B^2 - 1)/d) - B, B = 2^64.
+    const __uint128_t B = ((__uint128_t)1) << 64;
+    return (uint64_t)((((B * B) - 1) / d) - B);
+#else
+    return 0; // fallback path does not use preinverse
+#endif
+}
+
+static inline uint64_t mp_udiv_qrnnd_preinv(
+    uint64_t *r,
+    uint64_t nh, uint64_t nl,
+    uint64_t d,
+    uint64_t dinv)
+{
+#if defined(__SIZEOF_INT128__)
+    const __uint128_t n = ((__uint128_t)nh << 64) | (__uint128_t)nl;
+
+    // q ~= high(nh * dinv + nl) + nh
+    __uint128_t t = (__uint128_t)nh * (__uint128_t)dinv + (__uint128_t)nl;
+    uint64_t q = (uint64_t)(t >> 64) + nh;
+
+    if (q == 0 || nh >= d) q = UINT64_MAX;
+
+    __uint128_t prod = (__uint128_t)q * (__uint128_t)d;
+
+    if (prod > n) {
+        --q;
+        prod -= d;
+        if (prod > n) {
+            --q;
+            prod -= d;
+        }
+    } else {
+        __uint128_t prod2 = prod + d;
+        if (prod2 <= n) {
+            ++q;
+            prod = prod2;
+            prod2 += d;
+            if (prod2 <= n) {
+                ++q;
+                prod = prod2;
+            }
+        }
+    }
+
+    *r = (uint64_t)(n - prod);
+    return q;
+#else
+    uint64_t q;
+    *r = div_2by1(&q, nh, nl, d);
+    return q;
+#endif
+}
+
 void mp_div(uint64_t *q, uint64_t *r, const uint64_t *num, const uint64_t *den) {
     if (mp_is_zero(den)) {
         mp_zero(q);
@@ -726,7 +799,13 @@ void mp_div(uint64_t *q, uint64_t *r, const uint64_t *num, const uint64_t *den) 
 
     for (int j = qn - 1; j >= 0; --j) {
         uint64_t qhat, rhat;
-        rhat = div_2by1(&qhat, unorm[j + n], unorm[j + n - 1], v1);
+
+        if (unorm[j + n] == v1) {
+            qhat = UINT64_MAX;
+            rhat = unorm[j + n - 1] + v1;
+        } else {
+            rhat = div_2by1(&qhat, unorm[j + n], unorm[j + n - 1], v1);
+        }
 
         for (;;) {
             uint64_t lo, hi;
@@ -833,42 +912,82 @@ void mp_div(uint64_t *q, uint64_t *r, const uint64_t *num, const uint64_t *den) 
 
     const uint64_t v1 = vnorm[n - 1];
     const uint64_t v2 = vnorm[n - 2];
+    // Preinverse only pays off reliably for genuinely multi-limb quotient paths
+    // and larger normalized divisors. For very small n (especially n == 2), the
+    // exact 128/64 estimate is both safer and often faster on our fixed-size use
+    // cases.
+    const bool use_preinv = false;
+    const uint64_t v1_inv = 0;
 
-    for (int j = qn - 1; j >= 0; j--) {
+    if (qn == 1) {
         uint64_t qhat;
         __uint128_t rhat;
 
-        if (unorm[j + n] == v1) {
+        if (unorm[n] == v1) {
             qhat = UINT64_MAX;
-            rhat = (__uint128_t)unorm[j + n - 1] + (__uint128_t)v1;
+            rhat = (__uint128_t)unorm[n - 1] + (__uint128_t)v1;
         } else {
-            __uint128_t uj2 =
-                (__uint128_t)unorm[j + n] << (2*MP_N) |
-                (__uint128_t)unorm[j + n - 1];
-
-            qhat = (uint64_t)(uj2 / v1);
-            rhat = uj2 % v1;
+            __uint128_t num2 = ((__uint128_t)unorm[n] << 64) | (__uint128_t)unorm[n - 1];
+            qhat = (uint64_t)(num2 / v1);
+            rhat = (__uint128_t)(uint64_t)(num2 % v1);
         }
 
         for (;;) {
             __uint128_t left  = (__uint128_t)qhat * (__uint128_t)v2;
-            __uint128_t right = (rhat << 2*MP_N) | (__uint128_t)unorm[j + n - 2];
+            __uint128_t right = (rhat << 64) | (__uint128_t)unorm[n - 2];
             if (left <= right) break;
-
             --qhat;
             rhat += (__uint128_t)v1;
-            if (rhat >= (((__uint128_t)1) << 2*MP_N)) break;
+            if (rhat >= (((__uint128_t)1) << 64)) break;
         }
 
-        uint64_t *u_seg = &unorm[j];
-        uint64_t borrow_out = mul_sub_knuth(u_seg, vnorm, n, qhat);
-
+        uint64_t borrow_out = mul_sub_knuth(unorm, vnorm, n, qhat);
         if (borrow_out) {
-            add_back_knuth(u_seg, vnorm, n);
-            qhat--;
+            add_back_knuth(unorm, vnorm, n);
+            --qhat;
         }
+        qlimb[0] = qhat;
+    } else {
+        for (int j = qn - 1; j >= 0; --j) {
+            uint64_t qhat;
+            __uint128_t rhat;
 
-        qlimb[j] = qhat;
+            if (unorm[j + n] == v1) {
+                qhat = UINT64_MAX;
+                rhat = (__uint128_t)unorm[j + n - 1] + (__uint128_t)v1;
+            } else if (use_preinv) {
+                uint64_t rr;
+                qhat = mp_udiv_qrnnd_preinv(
+                    &rr,
+                    unorm[j + n],
+                    unorm[j + n - 1],
+                    v1,
+                    v1_inv
+                );
+                rhat = (__uint128_t)rr;
+            } else {
+                __uint128_t num2 = ((__uint128_t)unorm[j + n] << 64) | (__uint128_t)unorm[j + n - 1];
+                qhat = (uint64_t)(num2 / v1);
+                rhat = (__uint128_t)(uint64_t)(num2 % v1);
+            }
+
+            for (;;) {
+                __uint128_t left  = (__uint128_t)qhat * (__uint128_t)v2;
+                __uint128_t right = (rhat << 64) | (__uint128_t)unorm[j + n - 2];
+                if (left <= right) break;
+                --qhat;
+                rhat += (__uint128_t)v1;
+                if (rhat >= (((__uint128_t)1) << 64)) break;
+            }
+
+            uint64_t *u_seg = &unorm[j];
+            uint64_t borrow_out = mul_sub_knuth(u_seg, vnorm, n, qhat);
+            if (borrow_out) {
+                add_back_knuth(u_seg, vnorm, n);
+                --qhat;
+            }
+            qlimb[j] = qhat;
+        }
     }
 
     mp_uint_t rlimb = {};
@@ -1238,7 +1357,6 @@ uint64_t mp_addmul(uint64_t *r, const uint64_t *a, size_t n, uint64_t b)
         uint64_t lo, hi;
         mp_mul64(a[i], b, lo, hi);
 
-        // r[i] + lo + carry
         uint64_t t = r[i] + lo;
         uint64_t c1 = (t < r[i]);
 

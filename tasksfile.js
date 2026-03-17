@@ -176,8 +176,7 @@ function testAltBn128() {
     const asmDefines = getAsmDefines();
 
     const cmd =
-        "g++ " +
-        //"-DCOUNT_OPS " +
+        "g++ -O3 " +
         (asmDefines ? asmDefines + " " : "") +
         getIncludeFlags(["-I../c"]) +
         " ../c/naf.cpp" +

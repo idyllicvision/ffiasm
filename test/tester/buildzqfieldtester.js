@@ -53,13 +53,13 @@ async function testField(prime, test, options = {}) {
         path.join(dir.path, "fr.cpp")
     ];
 
-    if (useAsm && process.platform === "darwin" && process.arch === "arm64") {
+    /*if (useAsm && process.platform === "darwin" && process.arch === "arm64") {
         defines.push("-DUSE_ASM", "-DARCH_ARM64");
         sources.push(
             path.join(dir.path, "fr_generic.cpp"),
             path.join(dir.path, "fr_raw_arm64.s")
         );
-    } else {
+    } else */{
         sources.push(
             path.join(dir.path, "fr_generic.cpp"),
             path.join(dir.path, "fr_raw_generic.cpp")

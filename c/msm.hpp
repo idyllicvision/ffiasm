@@ -13,6 +13,22 @@ class MSM {
     uint64_t scalarSize;
     uint64_t bitsPerChunk;
 
+public:
+    struct CostEstimate {
+        uint64_t nonZeroSlices = 0;     // real add/sub in bucket fill
+        uint64_t bucketReduceAdds = 0;  // summing buckets within a chunk
+        uint64_t chunkMergeAdds = 0;    // final add between chunks
+        uint64_t chunkMergeDbls = 0;    // final dbl between chunks
+
+        uint64_t totalAdds() const {
+            return nonZeroSlices + bucketReduceAdds + chunkMergeAdds;
+        }
+
+        uint64_t totalGroupOps() const {
+            return totalAdds() + chunkMergeDbls;
+        }
+    };
+
 private:
     uint64_t calcAddsCount(uint64_t nPoints, uint64_t scalarSize, uint64_t bitsPerChunk) const {
         return calcChunkCount(scalarSize, bitsPerChunk)
@@ -61,6 +77,11 @@ private:
 
 public:
     MSM(Curve &_g): g(_g) {}
+
+    CostEstimate estimateCost(uint8_t* _scalars,
+                              uint64_t _scalarSize,
+                              uint64_t _n,
+                              uint64_t _bitsPerChunk = 0);
 
     void run(typename Curve::Point &r,
              typename Curve::PointAffine *_bases,

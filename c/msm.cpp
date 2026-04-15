@@ -3,6 +3,71 @@
 #include "misc.hpp"
 
 template <typename Curve, typename BaseField>
+typename MSM<Curve, BaseField>::CostEstimate
+MSM<Curve, BaseField>::estimateCost(uint8_t* _scalars,
+                                    uint64_t _scalarSize,
+                                    uint64_t _n,
+                                    uint64_t _bitsPerChunk)
+{
+    CostEstimate est;
+
+    const uint64_t nPoints = _n;
+    if (nPoints == 0) return est;
+
+    scalars = _scalars;
+    scalarSize = _scalarSize;
+
+#ifdef MSM_BITS_PER_CHUNK
+    bitsPerChunk = MSM_BITS_PER_CHUNK;
+#else
+    bitsPerChunk = calcBitsPerChunk(nPoints, scalarSize);
+#endif
+
+    if (nPoints == 1) {
+        // This is a special case of mulByScalar; the regular MSM model may not very applicable here
+        // We keep the estimate minimal
+        return est;
+    }
+
+    const uint64_t nChunks = calcChunkCount(scalarSize, bitsPerChunk);
+    const uint64_t nBuckets = calcBucketCount(bitsPerChunk);
+
+    for (uint64_t i = 0; i < nPoints; i++) {
+        int carry = 0;
+
+        for (uint64_t j = 0; j < nChunks; j++) {
+            int bucketIndex = (int)getBucketIndex(i, j) + carry;
+
+            if (bucketIndex >= (int)nBuckets) {
+                bucketIndex -= (int)(nBuckets * 2);
+                carry = 1;
+            } else {
+                carry = 0;
+            }
+
+            if (bucketIndex != 0) {
+                est.nonZeroSlices++;
+            }
+        }
+    }
+
+    // in every chunk:
+    // g.copy(t, buckets[last]);
+    // then for i = last-1..0:
+    //   g.add(tmp, tmp, buckets[i]);
+    //   g.add(t, t, tmp);
+    // => 2 * (nBuckets - 1) adds per chunk
+    est.bucketReduceAdds = nChunks * 2 * (nBuckets - 1);
+
+    if (nChunks > 0) {
+        est.chunkMergeAdds = nChunks - 1;
+        est.chunkMergeDbls = (nChunks - 1) * bitsPerChunk;
+    }
+
+    return est;
+}
+
+template <typename Curve, typename BaseField>
 void MSM<Curve, BaseField>::run(typename Curve::Point &r,
                                 typename Curve::PointAffine *_bases,
                                 uint8_t* _scalars,

@@ -1129,12 +1129,17 @@ static inline void mp_mod_2n_n(uint64_t *r, const uint64_t *num2n, const uint64_
         uint64_t qhat, rhat;
 
 #if defined(__SIZEOF_INT128__)
-        __uint128_t uj2 =
-            ((__uint128_t)unorm[j + n] << (2 * MP_N)) |
-            (__uint128_t)unorm[j + n - 1];
+        if (unorm[j + n] >= v1) {
+            qhat = UINT64_MAX;
+            rhat = unorm[j + n - 1] + v1;
+        } else {
+            __uint128_t uj2 =
+                ((__uint128_t)unorm[j + n] << (2 * MP_N)) |
+                (__uint128_t)unorm[j + n - 1];
 
-        qhat = (uint64_t)(uj2 / v1);
-        rhat = (uint64_t)(uj2 % v1);
+            qhat = (uint64_t)(uj2 / v1);
+            rhat = (uint64_t)(uj2 % v1);
+        }
 
         for (;;) {
             __uint128_t left =
@@ -1368,7 +1373,6 @@ uint64_t mp_addmul(uint64_t *r, const uint64_t *a, size_t n, uint64_t b)
     }
 
     return carry;
-}
 #endif
 }
 

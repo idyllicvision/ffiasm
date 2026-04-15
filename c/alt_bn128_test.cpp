@@ -5,12 +5,9 @@
 #include "gtest/gtest.h"
 #include "alt_bn128.hpp"
 #include "fft.hpp"
-/*
-//perf
 #include <chrono>
 #include <iomanip>
 #include <functional>
-*/
 using namespace AltBn128;
 
 namespace {
@@ -133,7 +130,7 @@ TEST(altBn128, g1_times_3) {
     ASSERT_TRUE(G1.eq(p1,p2));
 }
 
-    TEST(altBn128, g1_times_3_exp) {
+TEST(altBn128, g1_times_3_exp) {
     G1Point p1;
     G1.add(p1, G1.one(), G1.one());
     G1.add(p1, p1, G1.one());
@@ -169,7 +166,7 @@ TEST(altBn128, g1_times_5) {
     ASSERT_TRUE(G1.eq(p1,p6));
 }
 
-    TEST(altBn128, g1_times_65_exp) {
+TEST(altBn128, g1_times_65_exp) {
     G1Point p1;
     G1.dbl(p1, G1.one());
     G1.dbl(p1, p1);
@@ -190,7 +187,7 @@ TEST(altBn128, g1_times_5) {
     ASSERT_TRUE(G1.eq(p1,p2));
 }
 
-    TEST(altBn128, g1_expToOrder) {
+TEST(altBn128, g1_expToOrder) {
     mp_uint_t scalar;
     mp_uint_t x;
     ASSERT_TRUE(mp_set(x,
@@ -205,7 +202,7 @@ TEST(altBn128, g1_times_5) {
     ASSERT_TRUE(G1.isZero(p1));
 }
 
-    TEST(altBn128, g2_expToOrder) {
+TEST(altBn128, g2_expToOrder) {
     mp_uint_t scalar;
     mp_uint_t x;
     ASSERT_TRUE(mp_set(x,
@@ -640,18 +637,6 @@ TEST(altBn128Perf, multiexp_phases_timing_nogmp) {
 }
 
 
-    using perf_clock2 = std::chrono::steady_clock;
-
-static inline double bench_ms2(std::function<void()> fn) {
-    auto t0 = perf_clock2::now();
-    fn();
-    auto t1 = perf_clock2::now();
-    return std::chrono::duration<double, std::milli>(t1 - t0).count();
-}
-
-static inline double ns_per_op2(double ms, size_t n) {
-    return (ms * 1e6) / (double)n;
-}
 
 TEST(altBn128Perf, affine_build_path_timing_nogmp) {
     G1PointAffine p1_aff, p2_aff, out_aff;
@@ -666,7 +651,7 @@ TEST(altBn128Perf, affine_build_path_timing_nogmp) {
     const size_t N_BUILD_STEP = 100000;
 
     // 1) pure affine+affine -> Jacobian
-    double ms_add_affine = bench_ms2([&]() {
+    double ms_add_affine = bench_ms([&]() {
         for (size_t i = 0; i < N_ADD_AFFINE; i++) {
             G1.add(out_jac, p1_aff, p2_aff);
         }
@@ -674,7 +659,7 @@ TEST(altBn128Perf, affine_build_path_timing_nogmp) {
 
     // 2) pure Jacobian -> affine
     G1.add(tmp_jac, p1_aff, p2_aff);
-    double ms_to_affine = bench_ms2([&]() {
+    double ms_to_affine = bench_ms([&]() {
         for (size_t i = 0; i < N_TO_AFFINE; i++) {
             G1.copy(out_aff, tmp_jac);
         }
@@ -685,7 +670,7 @@ TEST(altBn128Perf, affine_build_path_timing_nogmp) {
     G1PointAffine cur_aff;
     G1.copy(cur_aff, p1_aff);
 
-    double ms_build_step = bench_ms2([&]() {
+    double ms_build_step = bench_ms([&]() {
         for (size_t i = 0; i < N_BUILD_STEP; i++) {
             G1.add(tmp_jac, cur_aff, p1_aff);
             G1.copy(cur_aff, tmp_jac);
@@ -698,15 +683,15 @@ TEST(altBn128Perf, affine_build_path_timing_nogmp) {
     std::cout << std::fixed << std::setprecision(3);
     std::cout << "[perf][nogmp] G1.add affine+affine -> jac : "
               << ms_add_affine << " ms (N=" << N_ADD_AFFINE
-              << ") => " << ns_per_op2(ms_add_affine, N_ADD_AFFINE) << " ns/op\n";
+              << ") => " << ns_per_op(ms_add_affine, N_ADD_AFFINE) << " ns/op\n";
 
     std::cout << "[perf][nogmp] G1.copy jac -> affine       : "
               << ms_to_affine << " ms (N=" << N_TO_AFFINE
-              << ") => " << ns_per_op2(ms_to_affine, N_TO_AFFINE) << " ns/op\n";
+              << ") => " << ns_per_op(ms_to_affine, N_TO_AFFINE) << " ns/op\n";
 
     std::cout << "[perf][nogmp] build step (add_aff + toAff): "
               << ms_build_step << " ms (N=" << N_BUILD_STEP
-              << ") => " << ns_per_op2(ms_build_step, N_BUILD_STEP) << " ns/op\n";
+              << ") => " << ns_per_op(ms_build_step, N_BUILD_STEP) << " ns/op\n";
 }
 
 TEST(altBn128Perf, prepare_breakdown_nogmp) {
@@ -717,7 +702,7 @@ TEST(altBn128Perf, prepare_breakdown_nogmp) {
     Scalar *scalars = new Scalar[NMExp];
     G1PointAffine *bases = new G1PointAffine[NMExp];
 
-    double ms_scalars = bench_ms2([&]() {
+    double ms_scalars = bench_ms([&]() {
         for (int i = 0; i < NMExp; i++) {
             mp_uint_t x;
             mp_set(x, (uint64_t)(i + 1));
@@ -725,7 +710,7 @@ TEST(altBn128Perf, prepare_breakdown_nogmp) {
         }
     });
 
-    double ms_bases = bench_ms2([&]() {
+    double ms_bases = bench_ms([&]() {
         for (int i = 0; i < NMExp; i++) {
             if (i == 0) {
                 G1.copy(bases[0], G1.one());

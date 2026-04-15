@@ -107,6 +107,9 @@ void <%=name%>_rawMMul(<%=name%>RawElement pRawResult, const <%=name%>RawElement
     const uint64_t *mq = <%=name%>_rawq;
 
     uint64_t np0;
+<% if (!canOptimizeConsensys) { %>
+    uint64_t c = 0;
+<% } %>
 
 <% for (let i=0; i<n64; i++) { %>
     uint64_t product<%=i%>[N] = {0};
@@ -116,18 +119,35 @@ void <%=name%>_rawMMul(<%=name%>RawElement pRawResult, const <%=name%>RawElement
 
 <% for (let i=0; i<n64-1; i++) { %>
     np0 = <%=name%>_np * product<%=i%>[0];
+<% if (!canOptimizeConsensys) { %>
+    c += mp_addmul(product<%=i%>, mq, N, np0);
+<% } else { %>
     product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
+<% } %>
 
     product<%=i+1%>[<%=n64%>] = mp_addmul(product<%=i+1%>, pRawB, <%=name%>_N64, pRawA[<%=i+1%>]);
+<% if (!canOptimizeConsensys) { %>
+    product<%=i+1%>[<%=n64%>] += c;
+    c = mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
+<% } else { %>
     mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
+<% } %>
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
+<% if (!canOptimizeConsensys) { %>
+    c += mp_addmul(product<%=n64-1%>, mq, N, np0);
+<% } else { %>
     mp_addmul(product<%=n64-1%>, mq, N, np0);
+<% } %>
 
     mp_copy(pRawResult, product<%=n64-1%> + 1);
 
+<% if (!canOptimizeConsensys) { %>
+    if (c || mp_cmp(pRawResult, mq) >= 0)
+<% } else { %>
     if (mp_cmp(pRawResult, mq) >= 0)
+<% } %>
     {
         mp_sub(pRawResult, pRawResult, mq);
     }
@@ -139,6 +159,9 @@ void <%=name%>_rawMMul1(<%=name%>RawElement pRawResult, const <%=name%>RawElemen
     const uint64_t *mq = <%=name%>_rawq;
 
     uint64_t np0;
+<% if (!canOptimizeConsensys) { %>
+    uint64_t c = 0;
+<% } %>
 
 <% for (let i=0; i<n64; i++) { %>
     uint64_t product<%=i%>[N] = {0};
@@ -148,16 +171,34 @@ void <%=name%>_rawMMul1(<%=name%>RawElement pRawResult, const <%=name%>RawElemen
 
 <% for (let i=0; i<n64-1; i++) { %>
     np0 = <%=name%>_np * product<%=i%>[0];
+<% if (!canOptimizeConsensys) { %>
+    c += mp_addmul(product<%=i%>, mq, N, np0);
+<% } else { %>
     product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
+<% } %>
+
+<% if (!canOptimizeConsensys) { %>
+    product<%=i+1%>[<%=n64%>] += c;
+    c = mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
+<% } else { %>
     mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
+<% } %>
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
+<% if (!canOptimizeConsensys) { %>
+    c += mp_addmul(product<%=n64-1%>, mq, N, np0);
+<% } else { %>
     mp_addmul(product<%=n64-1%>, mq, N, np0);
+<% } %>
 
     mp_copy(pRawResult, product<%=n64-1%> + 1);
 
+<% if (!canOptimizeConsensys) { %>
+    if (c || mp_cmp(pRawResult, mq) >= 0)
+<% } else { %>
     if (mp_cmp(pRawResult, mq) >= 0)
+<% } %>
     {
         mp_sub(pRawResult, pRawResult, mq);
     }
@@ -169,6 +210,9 @@ void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>
     const uint64_t *mq = <%=name%>_rawq;
 
     uint64_t np0;
+<% if (!canOptimizeConsensys) { %>
+    uint64_t c = 0;
+<% } %>
 
     uint64_t product0[N];
 <% for (let i=1; i<n64; i++) { %>
@@ -180,16 +224,34 @@ void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>
 
 <% for (let i=0; i<n64-1; i++) { %>
     np0 = <%=name%>_np * product<%=i%>[0];
+<% if (!canOptimizeConsensys) { %>
+    c += mp_addmul(product<%=i%>, mq, N, np0);
+<% } else { %>
     product<%=i+1%>[1] = mp_addmul(product<%=i%>, mq, N, np0);
+<% } %>
+
+<% if (!canOptimizeConsensys) { %>
+    product<%=i+1%>[<%=n64%>] += c;
+    c = mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
+<% } else { %>
     mp_add(product<%=i+1%>, product<%=i+1%>, N, product<%=i%> + 1, N - 1);
+<% } %>
 <% } %>
 
     np0 = <%=name%>_np * product<%=n64-1%>[0];
+<% if (!canOptimizeConsensys) { %>
+    c += mp_addmul(product<%=n64-1%>, mq, N, np0);
+<% } else { %>
     mp_addmul(product<%=n64-1%>, mq, N, np0);
+<% } %>
 
     mp_copy(pRawResult, product<%=n64-1%> + 1);
 
+<% if (!canOptimizeConsensys) { %>
+    if (c || mp_cmp(pRawResult, mq) >= 0)
+<% } else { %>
     if (mp_cmp(pRawResult, mq) >= 0)
+<% } %>
     {
         mp_sub(pRawResult, pRawResult, mq);
     }

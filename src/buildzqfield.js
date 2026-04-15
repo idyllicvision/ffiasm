@@ -53,8 +53,10 @@ async function buildField(q, name) {
     const generic_cpp = await renderFile(path.join(__dirname, "fr_generic.cpp.ejs"), builder);
     const raw_generic_cpp = await renderFile(path.join(__dirname, "fr_raw_generic.cpp.ejs"), builder);
     const raw_arm64_s = await renderFile(path.join(__dirname, "fr_raw_arm64.s.ejs"), builder);
+    const mp_hpp = await renderFile(path.join(__dirname, "mp.hpp.ejs"), {n64: builder.n64});
+    const mp_cpp = await renderFile(path.join(__dirname, "mp.cpp.ejs"), {n64: builder.n64});
 
-    return {n64: builder.n64, asm: asm, hpp: hpp, cpp: cpp, element_hpp: element_hpp, generic_cpp: generic_cpp, raw_generic_cpp: raw_generic_cpp, raw_arm64_s: raw_arm64_s};
+    return {n64: builder.n64, asm: asm, hpp: hpp, cpp: cpp, element_hpp: element_hpp, generic_cpp: generic_cpp, raw_generic_cpp: raw_generic_cpp, raw_arm64_s: raw_arm64_s, mp_hpp: mp_hpp, mp_cpp: mp_cpp};
 }
 
 if (runningAsScript) {
@@ -85,6 +87,8 @@ if (runningAsScript) {
         fs.writeFileSync(cGenericFileName, res.generic_cpp, "utf8");
         fs.writeFileSync(cRawGenericFileName, res.raw_generic_cpp, "utf8");
         fs.writeFileSync(sRawArm64FileName, res.raw_arm64_s, "utf8");
+        fs.writeFileSync("mp.hpp", res.mp_hpp, "utf8");
+        fs.writeFileSync("mp.cpp", res.mp_cpp, "utf8");
     });
 
 } else {

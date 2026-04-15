@@ -91,7 +91,7 @@ void pushNumber(std::vector<std::string> &v) {
 
 void callFunction(FunctionSpec fs) {
     if (stack.size() < fs.nOps) {
-        throw new std::runtime_error("Not enough elements in stack");
+        throw std::runtime_error("Not enough elements in stack");
     }
     if (fs.nOps == 1) {
         FrElement a = stack.back();

@@ -558,21 +558,6 @@ void Curve<BaseField>::copy(Point &r, PointAffine &a) {
     F.copy(r.zz, F.one());
     F.copy(r.zzz, F.one());
 }
-/*
-template <typename BaseField>
-void Curve<BaseField>::copy(PointAffine &r, Point &a) {
-#ifdef COUNT_OPS
-    cntToAffine++;
-#endif // COUNT_OPS
-    if (isZero(a)) {
-        F.copy(r.x, F.zero());
-        F.copy(r.y, F.zero());
-        return;
-    }
-    F.div(r.x, a.x, a.zz);
-    F.div(r.y, a.y, a.zzz);
-}
-*/
 
 template <typename BaseField>
 void Curve<BaseField>::batchToAffine(PointAffine *out, Point *in, size_t n) {
@@ -691,22 +676,7 @@ void Curve<BaseField>::neg(Point &r, PointAffine &a) {
     F.copy(r.zz, F.one());
     F.copy(r.zzz, F.one());
 }
-/*
-template <typename BaseField>
-void Curve<BaseField>::neg(PointAffine &r, Point &a) {
-#ifdef COUNT_OPS
-    cntToAffine++;
-#endif // COUNT_OPS
-    if (isZero(a)) {
-        F.copy(r.x, F.zero());
-        F.copy(r.y, F.zero());
-        return;
-    }
-    F.div(r.x, a.x, a.zz);
-    F.div(r.y, a.y, a.zzz);
-    F.neg(r.y, r.y);
-}
-*/
+
 template <typename BaseField>
 void Curve<BaseField>::batchNegToAffine(PointAffine *out, Point *in, size_t n) {
     if (n == 0) return;

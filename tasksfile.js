@@ -105,14 +105,11 @@ function getFieldSourcesForBench() {
     if (process.platform === "darwin" && process.arch === "arm64") {
         return [
             "fq.cpp",
+            "fq_generic.cpp",
             "fq_raw_arm64.s",
-            //"fq_raw_generic.cpp",
-            //"fq_generic.cpp",
             "fr.cpp",
-            //"fr_generic.cpp",
+            "fr_generic.cpp",
             "fr_raw_arm64.s"
-            //"fr_raw_generic.cpp"
-
         ];
     }
 

@@ -8,7 +8,7 @@ This package is a script that generates a Finite field Library in Intel64 / ARM6
 
 ## Usage
 
-install g++ nasm ang gmp library if you don't have it.
+install g++ and nasm if you don't have them.
 
 ```
 npm install -g ffiasm
@@ -17,7 +17,7 @@ cd myProject
 buildzqfield -q 21888242871839275222246405745257275088548364400416034343698204186575808495617 -n Fr
 ```
 
-You now will have two files fr.cpp, fr.hpp and fr.asm
+You now will have fr.cpp, fr.hpp, fr.asm, mp.cpp, and mp.hpp
 
 ```
 ls
@@ -66,7 +66,7 @@ int main() {
 Compile it
 
 ```
-g++ main.cpp fr.o fr.cpp -o example -lgmp
+g++ main.cpp fr.o fr.cpp mp.cpp -o example
 ```
 
 Run it

@@ -62,6 +62,13 @@ private:
 public:
     MSM(Curve &_g): g(_g) {}
 
+    uint64_t estimateCost(
+        uint8_t* _scalars,
+        uint64_t _scalarSize,
+        uint64_t _n,
+        uint64_t _bitsPerChunk = 0
+    );
+
     void run(typename Curve::Point &r,
              typename Curve::PointAffine *_bases,
              uint8_t* _scalars,

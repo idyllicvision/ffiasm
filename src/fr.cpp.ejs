@@ -1,159 +1,85 @@
 #include "<%=name.toLowerCase()+".hpp"%>"
-#include <stdio.h>
-#include <stdlib.h>
-#include <gmp.h>
-#include <assert.h>
+#include "mp.hpp"
+#include <cstring>
 #include <string>
+#include <stdexcept>
+#include <climits>
 
-
-static mpz_t q;
-static mpz_t zero;
-static mpz_t one;
-static mpz_t mask;
-static size_t nBits;
-static bool initialized = false;
-
-
-void <%=name%>_toMpz(mpz_t r, P<%=name%>Element pE) {
+void <%=name%>_toMP(mp_uint_t out, P<%=name%>Element pE) {
     <%=name%>Element tmp;
     <%=name%>_toNormal(&tmp, pE);
     if (!(tmp.type & <%=name%>_LONG)) {
-        mpz_set_si(r, tmp.shortVal);
-        if (tmp.shortVal<0) {
-            mpz_add(r, r, q);
-        }
+        mp_set_mod(out, tmp.shortVal, <%=name%>_q.longVal);
     } else {
-        mpz_import(r, <%=name%>_N64, -1, 8, -1, 0, (const void *)tmp.longVal);
+        mp_copy(out, tmp.longVal);
     }
 }
 
-void <%=name%>_fromMpz(P<%=name%>Element pE, mpz_t v) {
-    if (mpz_fits_sint_p(v)) {
+void <%=name%>_fromMP(P<%=name%>Element pE, const mp_uint_t v) {
+    if (mp_fits_int32(v)) {
         pE->type = <%=name%>_SHORT;
-        pE->shortVal = mpz_get_si(v);
+        pE->shortVal = mp_get_int32(v);
     } else {
         pE->type = <%=name%>_LONG;
-        for (int i=0; i<<%=name%>_N64; i++) pE->longVal[i] = 0;
-        mpz_export((void *)(pE->longVal), NULL, -1, 8, -1, 0, v);
+        mp_copy(pE->longVal, v);
     }
 }
 
-
-bool <%=name%>_init() {
-    if (initialized) return false;
-    initialized = true;
-    mpz_init(q);
-    mpz_import(q, <%=name%>_N64, -1, 8, -1, 0, (const void *)<%=name%>_q.longVal);
-    mpz_init_set_ui(zero, 0);
-    mpz_init_set_ui(one, 1);
-    nBits = mpz_sizeinbase (q, 2);
-    mpz_init(mask);
-    mpz_mul_2exp(mask, one, nBits);
-    mpz_sub(mask, mask, one);
-    return true;
-}
-
-void <%=name%>_str2element(P<%=name%>Element pE, char const *s) {
-    mpz_t mr;
-    mpz_init_set_str(mr, s, 10);
-    mpz_fdiv_r(mr, mr, q);
-    <%=name%>_fromMpz(pE, mr);
-    mpz_clear(mr);
-}
-
-char *<%=name%>_element2str(P<%=name%>Element pE) {
-    <%=name%>Element tmp;
-    mpz_t r;
-    if (!(pE->type & <%=name%>_LONG)) {
-        if (pE->shortVal>=0) {
-            char *r = new char[32];
-            sprintf(r, "%d", pE->shortVal);
-            return r;
-        } else {
-            mpz_init_set_si(r, pE->shortVal);
-            mpz_add(r, r, q);
-        }
-    } else {
-        <%=name%>_toNormal(&tmp, pE);
-        mpz_init(r);
-        mpz_import(r, <%=name%>_N64, -1, 8, -1, 0, (const void *)tmp.longVal);
+void <%=name%>_str2element(P<%=name%>Element pE, char const* s, int base) {
+    mp_uint_t v;
+    if (!mp_set_mod(v, s, base, <%=name%>_q.longVal)) {
+        mp_set(v, 0);
     }
-    char *res = mpz_get_str (0, 10, r);
-    mpz_clear(r);
-    return res;
+    <%=name%>_fromMP(pE, v);
+}
+
+std::string <%=name%>_element2str(P<%=name%>Element pE, uint32_t base) {
+    mp_uint_t v;
+    <%=name%>_toMP(v, pE);
+    return mp_get_str(v, base);
 }
 
 void <%=name%>_idiv(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
-    mpz_t ma;
-    mpz_t mb;
-    mpz_t mr;
-    mpz_init(ma);
-    mpz_init(mb);
-    mpz_init(mr);
+    mp_uint_t ma, mb;
+    <%=name%>_toMP(ma, a);
+    <%=name%>_toMP(mb, b);
 
-    <%=name%>_toMpz(ma, a);
-    // char *s1 = mpz_get_str (0, 10, ma);
-    // printf("s1 %s\n", s1);
-    <%=name%>_toMpz(mb, b);
-    // char *s2 = mpz_get_str (0, 10, mb);
-    // printf("s2 %s\n", s2);
-    mpz_fdiv_q(mr, ma, mb);
-    // char *sr = mpz_get_str (0, 10, mr);
-    // printf("r %s\n", sr);
-    <%=name%>_fromMpz(r, mr);
-
-    mpz_clear(ma);
-    mpz_clear(mb);
-    mpz_clear(mr);
+    mp_uint_t q, rem;
+    mp_div(q, rem, ma, mb);
+    <%=name%>_fromMP(r, q);
 }
 
 void <%=name%>_mod(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
-    mpz_t ma;
-    mpz_t mb;
-    mpz_t mr;
-    mpz_init(ma);
-    mpz_init(mb);
-    mpz_init(mr);
+    mp_uint_t ma, mb;
+    <%=name%>_toMP(ma, a);
+    <%=name%>_toMP(mb, b);
 
-    <%=name%>_toMpz(ma, a);
-    <%=name%>_toMpz(mb, b);
-    mpz_fdiv_r(mr, ma, mb);
-    <%=name%>_fromMpz(r, mr);
-
-    mpz_clear(ma);
-    mpz_clear(mb);
-    mpz_clear(mr);
+    mp_uint_t q, rem;
+    mp_div(q, rem, ma, mb);
+    <%=name%>_fromMP(r, rem);
 }
 
 void <%=name%>_pow(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
-    mpz_t ma;
-    mpz_t mb;
-    mpz_t mr;
-    mpz_init(ma);
-    mpz_init(mb);
-    mpz_init(mr);
+    mp_uint_t mb;
+    <%=name%>_toMP(mb, b);
 
-    <%=name%>_toMpz(ma, a);
-    <%=name%>_toMpz(mb, b);
-    mpz_powm(mr, ma, mb, q);
-    <%=name%>_fromMpz(r, mr);
+    mp_uint_t base;
+    <%=name%>_toMP(base, a);
 
-    mpz_clear(ma);
-    mpz_clear(mb);
-    mpz_clear(mr);
+    mp_uint_t res;
+    mp_pow_mod(res, base, mb, <%=name%>_q.longVal);
+
+    <%=name%>_fromMP(r, res);
 }
 
 void <%=name%>_inv(P<%=name%>Element r, P<%=name%>Element a) {
-    mpz_t ma;
-    mpz_t mr;
-    mpz_init(ma);
-    mpz_init(mr);
+    mp_uint_t base;
+    <%=name%>_toMP(base, a);
 
-    <%=name%>_toMpz(ma, a);
-    mpz_invert(mr, ma, q);
-    <%=name%>_fromMpz(r, mr);
-    mpz_clear(ma);
-    mpz_clear(mr);
+    mp_uint_t res;
+    mp_inv_mod(res, base, <%=name%>_q.longVal);
+
+    <%=name%>_fromMP(r, res);
 }
 
 void <%=name%>_div(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
@@ -163,7 +89,7 @@ void <%=name%>_div(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
 }
 
 void <%=name%>_fail() {
-    assert(false);
+    throw std::runtime_error("<%=name%> error");
 }
 
 void <%=name%>_longErr() {
@@ -171,104 +97,70 @@ void <%=name%>_longErr() {
 }
 
 Raw<%=name%>::Raw<%=name%>() {
-    <%=name%>_init();
     set(fZero, 0);
     set(fOne, 1);
     neg(fNegOne, fOne);
 }
 
-Raw<%=name%>::~Raw<%=name%>() {
+Raw<%=name%>::~Raw<%=name%>() {}
+
+void Raw<%=name%>::fromString(Element& r, const std::string& s, uint32_t radix) {
+    if (!mp_set_mod(r.v, s.c_str(), radix, <%=name%>_q.longVal)) {
+        mp_set(r.v, 0);
+    }
+    <%=name%>_rawToMontgomery(r.v, r.v);
 }
 
-void Raw<%=name%>::fromString(Element &r, const std::string &s, uint32_t radix) {
-    mpz_t mr;
-    mpz_init_set_str(mr, s.c_str(), radix);
-    mpz_fdiv_r(mr, mr, q);
-    for (int i=0; i<<%=name%>_N64; i++) r.v[i] = 0;
-    mpz_export((void *)(r.v), NULL, -1, 8, -1, 0, mr);
-    <%=name%>_rawToMontgomery(r.v,r.v);
-    mpz_clear(mr);
-}
-
-void Raw<%=name%>::fromUI(Element &r, unsigned long int v) {
-    mpz_t mr;
-    mpz_init(mr);
-    mpz_set_ui(mr, v);
-    for (int i=0; i<<%=name%>_N64; i++) r.v[i] = 0;
-    mpz_export((void *)(r.v), NULL, -1, 8, -1, 0, mr);
-    <%=name%>_rawToMontgomery(r.v,r.v);
-    mpz_clear(mr);
+void Raw<%=name%>::fromUI(Element& r, unsigned long int v) {
+    mp_set(r.v, v);
+    <%=name%>_rawToMontgomery(r.v, r.v);
 }
 
 Raw<%=name%>::Element Raw<%=name%>::set(int value) {
-  Element r;
-  set(r, value);
-  return r;
+    Element r;
+    set(r, value);
+    return r;
 }
 
-void Raw<%=name%>::set(Element &r, int value) {
-  mpz_t mr;
-  mpz_init(mr);
-  mpz_set_si(mr, value);
-  if (value < 0) {
-      mpz_add(mr, mr, q);
-  }
-
-  mpz_export((void *)(r.v), NULL, -1, 8, -1, 0, mr);
-
-  for (int i=0; i<<%=name%>_N64; i++) r.v[i] = 0;
-  mpz_export((void *)(r.v), NULL, -1, 8, -1, 0, mr);
-  <%=name%>_rawToMontgomery(r.v,r.v);
-  mpz_clear(mr);
+void Raw<%=name%>::set(Element& r, int value) {
+    mp_set_mod(r.v, value, <%=name%>_q.longVal);
+    <%=name%>_rawToMontgomery(r.v, r.v);
 }
 
-std::string Raw<%=name%>::toString(const Element &a, uint32_t radix) {
+std::string Raw<%=name%>::toString(const Element& a, uint32_t radix) {
     Element tmp;
-    mpz_t r;
     <%=name%>_rawFromMontgomery(tmp.v, a.v);
-    mpz_init(r);
-    mpz_import(r, <%=name%>_N64, -1, 8, -1, 0, (const void *)(tmp.v));
-    char *res = mpz_get_str (0, radix, r);
-    mpz_clear(r);
-    std::string resS(res);
-    free(res);
-    return resS;
+    return mp_get_str(tmp.v, radix);
 }
 
-void Raw<%=name%>::inv(Element &r, const Element &a) {
-    mpz_t mr;
-    mpz_init(mr);
-    mpz_import(mr, <%=name%>_N64, -1, 8, -1, 0, (const void *)(a.v));
-    mpz_invert(mr, mr, q);
-
-
-    for (int i=0; i<<%=name%>_N64; i++) r.v[i] = 0;
-    mpz_export((void *)(r.v), NULL, -1, 8, -1, 0, mr);
-
-    <%=name%>_rawMMul(r.v, r.v,<%=name%>_R3.longVal);
-    mpz_clear(mr);
+void Raw<%=name%>::inv(Element& r, const Element& a) {
+    Element t;
+    <%=name%>_rawFromMontgomery(t.v, a.v);
+    mp_inv_mod(r.v, t.v, <%=name%>_q.longVal);
+    <%=name%>_rawMMul(r.v, r.v, <%=name%>_R2.longVal);
 }
 
-void Raw<%=name%>::div(Element &r, const Element &a, const Element &b) {
+void Raw<%=name%>::div(Element& r, const Element& a, const Element& b) {
     Element tmp;
     inv(tmp, b);
     mul(r, a, tmp);
 }
 
-#define BIT_IS_SET(s, p) (s[p>>3] & (1 << (p & 0x7)))
-void Raw<%=name%>::exp(Element &r, const Element &base, uint8_t* scalar, unsigned int scalarSize) {
+#define BIT_IS_SET(s, p) (s[(p)>>3] & (1 << ((p) & 0x7)))
+void Raw<%=name%>::exp(Element& r, const Element& base, uint8_t* scalar, unsigned int scalarSize) {
     bool oneFound = false;
     Element copyBase;
     copy(copyBase, base);
-    for (int i=scalarSize*8-1; i>=0; i--) {
+
+    for (int i = (int)scalarSize * 8 - 1; i >= 0; i--) {
         if (!oneFound) {
-            if ( !BIT_IS_SET(scalar, i) ) continue;
+            if (!BIT_IS_SET(scalar, i)) continue;
             copy(r, copyBase);
             oneFound = true;
             continue;
         }
         square(r, r);
-        if ( BIT_IS_SET(scalar, i) ) {
+        if (BIT_IS_SET(scalar, i)) {
             mul(r, r, copyBase);
         }
     }
@@ -277,48 +169,37 @@ void Raw<%=name%>::exp(Element &r, const Element &base, uint8_t* scalar, unsigne
     }
 }
 
-void Raw<%=name%>::toMpz(mpz_t r, const Element &a) {
-    Element tmp;
-    <%=name%>_rawFromMontgomery(tmp.v, a.v);
-    mpz_import(r, <%=name%>_N64, -1, 8, -1, 0, (const void *)tmp.v);
+void Raw<%=name%>::toMP(mp_uint_t r, const Element &a) {
+    <%=name%>RawElement tmp;
+    <%=name%>_rawFromMontgomery(tmp, a.v);
+    mp_copy(r, tmp);
 }
 
-void Raw<%=name%>::fromMpz(Element &r, const mpz_t a) {
-    for (int i=0; i<<%=name%>_N64; i++) r.v[i] = 0;
-    mpz_export((void *)(r.v), NULL, -1, 8, -1, 0, a);
-    <%=name%>_rawToMontgomery(r.v, r.v);
+void Raw<%=name%>::fromMP(Element &a, const mp_uint_t r) {
+    mp_copy(a.v, r);
+    <%=name%>_rawToMontgomery(a.v, a.v);
 }
 
-int Raw<%=name%>::toRprBE(const Element &element, uint8_t *data, int bytes)
-{
-    if (bytes < <%=name%>_N64 * 8) {
-      return -(<%=name%>_N64 * 8);
-    }
+int Raw<%=name%>::toRprBE(const Element& element, uint8_t* data, int bytes) {
+    const int need = <%=name%>_N64 * 8;
+    if (bytes < need) return -need;
 
-    mpz_t r;
-    mpz_init(r);
+    mp_uint_t v;
+    toMP(v, element);
+    mp_export_be(data, v);
 
-    toMpz(r, element);
-   
-    mpz_export(data, NULL, 1, bytes, 1, 0, r);
-
-    return <%=name%>_N64 * 8;
+    return need;
 }
 
-int Raw<%=name%>::fromRprBE(Element &element, const uint8_t *data, int bytes)
-{
-    if (bytes < <%=name%>_N64 * 8) {
-      return -(<%=name%>_N64* 8);
-    }
-    mpz_t r;
-    mpz_init(r);
+int Raw<%=name%>::fromRprBE(Element& element, const uint8_t* data, int bytes) {
+    const int need = <%=name%>_N64 * 8;
+    if (bytes < need) return -need;
 
-    mpz_import(r, <%=name%>_N64 * 8, 0, 1, 0, 0, data);
-    fromMpz(element, r);
-    return <%=name%>_N64 * 8;
+    mp_uint_t v;
+    mp_import_be(v, data);
+    fromMP(element, v);
+
+    return need;
 }
-
-static bool init = <%=name%>_init();
 
 Raw<%=name%> Raw<%=name%>::field;
-

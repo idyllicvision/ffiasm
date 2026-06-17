@@ -1,7 +1,7 @@
 const bigInt = require("big-integer");
 const assert = require("assert");
 
-module.exports.genFuncs = genFuncs
+module.exports.genFuncs = genFuncs;
 
 class Reg {
     constructor(number) {
@@ -211,7 +211,7 @@ class GenBase {
 
         if (size % 2) {
             this.op("ldr", saved[size-1], "[sp], #16");
-           size--;
+            size--;
         }
 
         for (let i =size; i > 0; i -= 2) {
@@ -336,7 +336,7 @@ class GenBase {
 
 class Gen_rawIsZero extends GenBase {
     constructor(width, space) {
-        super(width, space, "rawIsZero", 1, 16)
+        super(width, space, "rawIsZero", 1, 16);
         this.generate();
     }
 
@@ -363,7 +363,7 @@ class Gen_rawIsZero extends GenBase {
     }
 
     genChunk(width, i) {
-         let r = this.genStep(width, i * 4);
+        let r = this.genStep(width, i * 4);
 
         if (this.accum === undefined) {
             this.accum = r;
@@ -466,7 +466,7 @@ class Gen_rawIsEq extends GenBase {
         this.op_empty();
     }
 
-   genStep(width, i) {
+    genStep(width, i) {
         assert(width > 0);
 
         if (width === 1) {
@@ -906,9 +906,9 @@ class Gen_rawNeg extends GenBase {
         this.genSubtraction();
 
         if (this.hasSavedRegs())
-           this.op("b", this.makeLabel("out"));
+            this.op("b", this.makeLabel("out"));
         else
-           this.op("ret");
+            this.op("ret");
         this.op_empty();
 
         this.op_label(doneLabel);
@@ -1010,7 +1010,7 @@ class Gen_rawNegLS extends GenBase {
         }
         if (this.width % 2) this.op_empty();
 
-        this.op("cset", "x2", "cs");
+        this.op("cset", "x2", "cc");                    //sub fix
     }
 
     genSubtractionOpA() {
@@ -1021,7 +1021,7 @@ class Gen_rawNegLS extends GenBase {
         }
         if (this.width % 2) this.op_empty();
 
-        this.op("cset", "x3", "cs");
+        this.op("cset", "x3", "cc");                    //sub fix
         this.op("orr",  "x3", "x3", "x2");
         this.op_empty();
         this.op("cbz", "x3", this.makeLabel("done"));
@@ -1081,9 +1081,11 @@ class Gen_rawShr extends GenBase {
     genCalcJump() {
         if (this.width > 2) {
             this.op("lsr", "x2", "x2", "#6");
-            this.op("adr", "x5", this.makeLabel("word_shift"));
-            this.op("ldr", "x5", "[x5, x2, lsl 3]");
-            this.op("br",  "x5");
+            for (let i = 0; i < this.width - 1; i++) {
+                this.op("cmp", "x2", "#" + i);
+                this.op("b.eq", this.makeWordLabel(i));
+            }
+            this.op("b", this.makeWordLabel(this.width - 1));
 
         } else {
             this.op("tbnz", "x2", "6", this.makeLabel("word_shift_1"));
@@ -1092,11 +1094,6 @@ class Gen_rawShr extends GenBase {
     }
 
     genJumpTable() {
-        this.op_label(this.makeLabel("word_shift"));
-
-        for (let i = 0; i < this.width; i++) {
-            this.op(".quad", this.makeWordLabel(i));
-        }
     }
 
     genShift() {
@@ -1122,7 +1119,7 @@ class Gen_rawShr extends GenBase {
         if (!this.hasSavedRegs())
             this.op("ret");
 
-         this.op_empty();
+        this.op_empty();
     }
 
     genBitShift(wordShift) {
@@ -1215,9 +1212,11 @@ class Gen_rawShl extends GenBase {
     genCalcJump() {
         if (this.width > 2) {
             this.op("lsr", "x2", "x2", "#6");
-            this.op("adr", "x5", this.makeLabel("word_shift"));
-            this.op("ldr", "x5", "[x5, x2, lsl 3]");
-            this.op("br",  "x5");
+            for (let i = 0; i < this.width - 1; i++) {
+                this.op("cmp", "x2", "#" + i);
+                this.op("b.eq", this.makeWordLabel(i));
+            }
+            this.op("b", this.makeWordLabel(this.width - 1));
 
         } else {
             this.op("tbnz", "x2", "6", this.makeLabel("word_shift_1"));
@@ -1226,11 +1225,6 @@ class Gen_rawShl extends GenBase {
     }
 
     genJumpTable() {
-        this.op_label(this.makeLabel("word_shift"));
-
-        for (let i = 0; i < this.width; i++) {
-            this.op(".quad", this.makeWordLabel(i));
-        }
     }
 
     genShift() {
@@ -1415,11 +1409,11 @@ class Gen_rawMul extends GenBase {
         let t1 = cyclicCopy(new RegVar(7, 5), this.width);
 
         for(i = 0; i < this.width; i++) {
-             let iAdd = (i === this.width - 1) ? "adc" : "adcs";
+            let iAdd = (i === this.width - 1) ? "adc" : "adcs";
 
-             if (!this.canOptimizeConsensys) {
+            if (!this.canOptimizeConsensys) {
                 iAdd = (i) ? "adcs" : "adds";
-             }
+            }
 
             if (!this.isShort) this.genLoadVarWord(this.b1, i, 2);
             this.op("umulh",  t1[i],   this.b1[i],   ra);

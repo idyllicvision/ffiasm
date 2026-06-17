@@ -87,6 +87,7 @@ public:
     void dbl(PointAffine &r, Point &a) { Point tmp; dbl(tmp, a); copy(r, tmp); }
     void dbl(PointAffine &r, PointAffine &a) { Point tmp; dbl(tmp, a); copy(r, tmp); }
 
+    void batchNegToAffine(PointAffine *out, Point *in, size_t n);
 
     void neg(Point &r, Point &a);
     void neg(PointAffine &r, PointAffine &a);
@@ -102,6 +103,8 @@ public:
     bool isZero(PointAffine &p1);
 
     std::string toString(Point &r, uint32_t radix = 10);
+
+    void batchToAffine(PointAffine *out, Point *in, size_t n);
 
     void copy(Point &r, Point &a);
     void copy(Point &r, PointAffine &a);

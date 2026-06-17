@@ -1,16 +1,18 @@
-#include <gmp.h>
 #include <iostream>
+#include <cstdint>
+#include <cstring>
 
 #include "gtest/gtest.h"
 #include "alt_bn128.hpp"
 #include "fft.hpp"
-
+#include <chrono>
+#include <iomanip>
+#include <functional>
 using namespace AltBn128;
 
 namespace {
 
 TEST(altBn128, f2_simpleMul) {
-
     F2Element e1;
     F2.fromString(e1, "(2,2)");
 
@@ -22,8 +24,6 @@ TEST(altBn128, f2_simpleMul) {
 
     F2Element e33;
     F2.fromString(e33, "(0,12)");
-
-    // std::cout << F2.toString(e3) << std::endl;
 
     ASSERT_TRUE(F2.eq(e3, e33));
 }
@@ -94,17 +94,13 @@ TEST(altBn128, f12_inv) {
 
 TEST(altBn128, g1_PlusZero) {
     G1Point p1;
-
     G1.add(p1, G1.one(), G1.zero());
-
     ASSERT_TRUE(G1.eq(p1, G1.one()));
 }
 
 TEST(altBn128, g1_minus_g1) {
     G1Point p1;
-
     G1.sub(p1, G1.one(), G1.one());
-
     ASSERT_TRUE(G1.isZero(p1));
 }
 
@@ -120,7 +116,6 @@ TEST(altBn128, g1_times_4) {
 
     ASSERT_TRUE(G1.eq(p1,p2));
 }
-
 
 TEST(altBn128, g1_times_3) {
     G1Point p1;
@@ -140,16 +135,13 @@ TEST(altBn128, g1_times_3_exp) {
     G1.add(p1, G1.one(), G1.one());
     G1.add(p1, p1, G1.one());
 
-    mpz_t e;
-    mpz_init_set_str(e, "3", 10);
-
-    uint8_t scalar[32];
-    for (int i=0;i<32;i++) scalar[i] = 0;
-    mpz_export((void *)scalar, NULL, -1, 8, -1, 0, e);
-    mpz_clear(e);
+    mp_uint_t scalar;
+    mp_uint_t x;
+    mp_set(x, 3);
+    mp_copy(scalar, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), scalar, 32);
+    G1.mulByScalar(p2, G1.one(), (uint8_t*)scalar, MP_N);
 
     ASSERT_TRUE(G1.eq(p1,p2));
 }
@@ -175,7 +167,6 @@ TEST(altBn128, g1_times_5) {
 }
 
 TEST(altBn128, g1_times_65_exp) {
-
     G1Point p1;
     G1.dbl(p1, G1.one());
     G1.dbl(p1, p1);
@@ -185,140 +176,215 @@ TEST(altBn128, g1_times_65_exp) {
     G1.dbl(p1, p1);
     G1.add(p1, p1, G1.one());
 
-    mpz_t e;
-    mpz_init_set_str(e, "65", 10);
-
-    uint8_t scalar[32];
-    for (int i=0;i<32;i++) scalar[i] = 0;
-    mpz_export((void *)scalar, NULL, -1, 8, -1, 0, e);
-    mpz_clear(e);
+    mp_uint_t scalar;
+    mp_uint_t x;
+    mp_set(x, 65);
+    mp_copy(scalar, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), scalar, 32);
+    G1.mulByScalar(p2, G1.one(), (uint8_t*)scalar, MP_N);
 
     ASSERT_TRUE(G1.eq(p1,p2));
 }
 
 TEST(altBn128, g1_expToOrder) {
-    mpz_t e;
-    mpz_init_set_str(e, "21888242871839275222246405745257275088548364400416034343698204186575808495617", 10);
-
-    uint8_t scalar[32];
-
-    for (int i=0;i<32;i++) scalar[i] = 0;
-    mpz_export((void *)scalar, NULL, -1, 8, -1, 0, e);
-    mpz_clear(e);
+    mp_uint_t scalar;
+    mp_uint_t x;
+    ASSERT_TRUE(mp_set(x,
+        "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+        10
+    ));
+    mp_copy(scalar, x);
 
     G1Point p1;
-
-    G1.mulByScalar(p1, G1.one(), scalar, 32);
+    G1.mulByScalar(p1, G1.one(), (uint8_t *)scalar, MP_N);
 
     ASSERT_TRUE(G1.isZero(p1));
 }
 
 TEST(altBn128, g2_expToOrder) {
-    mpz_t e;
-    mpz_init_set_str(e, "21888242871839275222246405745257275088548364400416034343698204186575808495617", 10);
-
-    uint8_t scalar[32];
-
-    for (int i=0;i<32;i++) scalar[i] = 0;
-    mpz_export((void *)scalar, NULL, -1, 8, -1, 0, e);
-    mpz_clear(e);
+    mp_uint_t scalar;
+    mp_uint_t x;
+    ASSERT_TRUE(mp_set(x,
+        "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+        10
+    ));
+    mp_copy(scalar, x);
 
     Curve<F2Field<RawFq>>::Point p1;
-
-    G2.mulByScalar(p1, G2.one(), scalar, 32);
+    G2.mulByScalar(p1, G2.one(), (uint8_t *)scalar, MP_N);
 
     ASSERT_TRUE(G2.isZero(p1));
 }
 
-TEST(altBn128, multiExp) {
-
+TEST(altBn128, multiExp_old) {
     int NMExp = 40000;
 
-    typedef uint8_t Scalar[32];
+    typedef mp_uint_t Scalar;
 
     Scalar *scalars = new Scalar[NMExp];
     G1PointAffine *bases = new G1PointAffine[NMExp];
 
-    uint64_t acc=0;
-    for (int i=0; i<NMExp; i++) {
-        if (i==0) {
+    uint64_t acc = 0;
+    for (int i = 0; i < NMExp; i++) {
+        if (i == 0) {
             G1.copy(bases[0], G1.one());
         } else {
             G1.add(bases[i], bases[i-1], G1.one());
         }
-        for (int j=0; j<32; j++) scalars[i][j] = 0;
-        *(int *)&scalars[i][0] = i+1;
-        acc += (i+1)*(i+1);
+
+        mp_uint_t x;
+        mp_set(x, (uint64_t)(i + 1));
+        mp_copy(scalars[i], x);
+        acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
     G1Point p1;
-    G1.multiMulByScalar(p1, bases, (uint8_t *)scalars, 32, NMExp);
+    G1.multiMulByScalar(p1, bases, (uint8_t *)scalars, MP_N, NMExp);
 
-    mpz_t e;
-    mpz_init_set_ui(e, acc);
-
-    Scalar sAcc;
-
-    for (int i=0;i<32;i++) sAcc[i] = 0;
-    mpz_export((void *)sAcc, NULL, -1, 8, -1, 0, e);
-    mpz_clear(e);
+    mp_uint_t sAcc;
+    mp_uint_t x;
+    mp_set(x, acc);
+    mp_copy(sAcc, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), sAcc, 32);
+    G1.mulByScalar(p2, G1.one(), (uint8_t *)sAcc, MP_N);
 
     ASSERT_TRUE(G1.eq(p1, p2));
+    //G1.printCounters();
+
+    delete[] bases;
+    delete[] scalars;
+}
+
+TEST(altBn128, multiExp) {
+    int NMExp = 40000;
+
+    typedef mp_uint_t Scalar;
+
+    Scalar *scalars = new Scalar[NMExp];
+    G1PointAffine *bases = new G1PointAffine[NMExp];
+    G1Point *basesJac = new G1Point[NMExp];
+
+    uint64_t acc = 0;
+
+    G1.copy(basesJac[0], G1.one());
+    for (int i = 1; i < NMExp; i++) {
+        G1.add(basesJac[i], basesJac[i - 1], G1.one());
+    }
+
+    G1.batchToAffine(bases, basesJac, NMExp);
+
+    for (int i = 0; i < NMExp; i++) {
+        mp_uint_t x;
+        mp_set(x, (uint64_t)(i + 1));
+        mp_copy(scalars[i], x);
+        acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
+    }
+
+    G1Point p1;
+    G1.multiMulByScalar(p1, bases, (uint8_t *)scalars, MP_N, NMExp);
+
+    mp_uint_t sAcc;
+    mp_uint_t x;
+    mp_set(x, acc);
+    mp_copy(sAcc, x);
+
+    G1Point p2;
+    G1.mulByScalar(p2, G1.one(), (uint8_t *)sAcc, MP_N);
+
+    ASSERT_TRUE(G1.eq(p1, p2));
+    //G1.printCounters();
+
+    delete[] basesJac;
+    delete[] bases;
+    delete[] scalars;
+}
+
+TEST(altBn128, multiExpMSM_old) {
+    int NMExp = 40000;
+
+    typedef mp_uint_t Scalar;
+
+    Scalar *scalars = new Scalar[NMExp];
+    G1PointAffine *bases = new G1PointAffine[NMExp];
+
+    uint64_t acc = 0;
+    for (int i = 0; i < NMExp; i++) {
+        if (i == 0) {
+            G1.copy(bases[0], G1.one());
+        } else {
+            G1.add(bases[i], bases[i-1], G1.one());
+        }
+
+        mp_uint_t x;
+        mp_set(x, (uint64_t)(i + 1));
+        mp_copy(scalars[i], x);
+        acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
+    }
+
+    G1Point p1;
+    G1.multiMulByScalarMSM(p1, bases, (uint8_t *)scalars, MP_N, NMExp);
+
+    mp_uint_t sAcc;
+    mp_uint_t x;
+    mp_set(x, acc);
+    mp_copy(sAcc, x);
+
+    G1Point p2;
+    G1.mulByScalar(p2, G1.one(), (uint8_t *)sAcc, MP_N);
+
+    ASSERT_TRUE(G1.eq(p1, p2));
+    //G1.printCounters();
 
     delete[] bases;
     delete[] scalars;
 }
 
 TEST(altBn128, multiExpMSM) {
-
     int NMExp = 40000;
 
-    typedef uint8_t Scalar[32];
+    typedef mp_uint_t Scalar;
 
     Scalar *scalars = new Scalar[NMExp];
     G1PointAffine *bases = new G1PointAffine[NMExp];
+    G1Point *basesJac = new G1Point[NMExp];
 
-    uint64_t acc=0;
-    for (int i=0; i<NMExp; i++) {
-        if (i==0) {
-            G1.copy(bases[0], G1.one());
-        } else {
-            G1.add(bases[i], bases[i-1], G1.one());
-        }
-        for (int j=0; j<32; j++) scalars[i][j] = 0;
-        *(int *)&scalars[i][0] = i+1;
-        acc += (i+1)*(i+1);
+    uint64_t acc = 0;
+
+    G1.copy(basesJac[0], G1.one());
+    for (int i = 1; i < NMExp; i++) {
+        G1.add(basesJac[i], basesJac[i - 1], G1.one());
+    }
+
+    G1.batchToAffine(bases, basesJac, NMExp);
+
+    for (int i = 0; i < NMExp; i++) {
+        mp_uint_t x;
+        mp_set(x, (uint64_t)(i + 1));
+        mp_copy(scalars[i], x);
+        acc += (uint64_t)(i + 1) * (uint64_t)(i + 1);
     }
 
     G1Point p1;
-    G1.multiMulByScalarMSM(p1, bases, (uint8_t *)scalars, 32, NMExp);
+    G1.multiMulByScalarMSM(p1, bases, (uint8_t *)scalars, MP_N, NMExp);
 
-    mpz_t e;
-    mpz_init_set_ui(e, acc);
-
-    Scalar sAcc;
-
-    for (int i=0;i<32;i++) sAcc[i] = 0;
-    mpz_export((void *)sAcc, NULL, -1, 8, -1, 0, e);
-    mpz_clear(e);
+    mp_uint_t sAcc;
+    mp_uint_t x;
+    mp_set(x, acc);
+    mp_copy(sAcc, x);
 
     G1Point p2;
-    G1.mulByScalar(p2, G1.one(), sAcc, 32);
+    G1.mulByScalar(p2, G1.one(), (uint8_t *)sAcc, MP_N);
 
     ASSERT_TRUE(G1.eq(p1, p2));
 
+    delete[] basesJac;
     delete[] bases;
     delete[] scalars;
 }
 
 TEST(altBn128, multiExp2) {
-
     int NMExp = 2;
 
     AltBn128::FrElement *scalars = new AltBn128::FrElement[NMExp];
@@ -341,10 +407,8 @@ TEST(altBn128, multiExp2) {
     F1.fromString(ref.x, "9163953212624378696742080269971059027061360176019470242548968584908855004282");
     F1.fromString(ref.y, "20922060990592511838374895951081914567856345629513259026540392951012456141360");
 
-    G1.multiMulByScalar(r, bases, (uint8_t *)scalars, 32, 2);
+    G1.multiMulByScalar(r, bases, (uint8_t *)scalars, MP_N, 2);
     G1.copy(ra, r);
-
-    // std::cout << G1.toString(r, 10);
 
     ASSERT_TRUE(G1.eq(ra, ref));
 
@@ -353,7 +417,6 @@ TEST(altBn128, multiExp2) {
 }
 
 TEST(altBn128, multiExp2MSM) {
-
     int NMExp = 2;
 
     AltBn128::FrElement *scalars = new AltBn128::FrElement[NMExp];
@@ -376,10 +439,8 @@ TEST(altBn128, multiExp2MSM) {
     F1.fromString(ref.x, "9163953212624378696742080269971059027061360176019470242548968584908855004282");
     F1.fromString(ref.y, "20922060990592511838374895951081914567856345629513259026540392951012456141360");
 
-    G1.multiMulByScalarMSM(r, bases, (uint8_t *)scalars, 32, 2);
+    G1.multiMulByScalarMSM(r, bases, (uint8_t *)scalars, MP_N, 2);
     G1.copy(ra, r);
-
-    // std::cout << G1.toString(r, 10);
 
     ASSERT_TRUE(G1.eq(ra, ref));
 
@@ -388,7 +449,6 @@ TEST(altBn128, multiExp2MSM) {
 }
 
 TEST(altBn128, multiExp8MSM) {
-
     int NMExp = 8;
 
     AltBn128::FrElement *scalars = new AltBn128::FrElement[NMExp];
@@ -435,10 +495,8 @@ TEST(altBn128, multiExp8MSM) {
     F1.fromString(ref.x, "17747920359253913546551417160303297937542312574889904290131615776238588901697");
     F1.fromString(ref.y, "8815119438581789680513912776342567599606944899217792926373871775002956510503");
 
-    G1.multiMulByScalarMSM(r, bases, (uint8_t *)scalars, 32, NMExp);
+    G1.multiMulByScalarMSM(r, bases, (uint8_t *)scalars, MP_N, NMExp);
     G1.copy(ra, r);
-
-    // std::cout << G1.toString(r, 10);
 
     ASSERT_TRUE(G1.eq(ra, ref));
 
@@ -469,6 +527,208 @@ TEST(altBn128, fft) {
     delete[] a;
 }
 
+using perf_clock = std::chrono::steady_clock;
+
+static inline double bench_ms(std::function<void()> fn) {
+    auto t0 = perf_clock::now();
+    fn();
+    auto t1 = perf_clock::now();
+    return std::chrono::duration<double, std::milli>(t1 - t0).count();
+}
+
+static inline double ns_per_op(double ms, size_t n) {
+    return (ms * 1e6) / (double)n;
+}
+
+TEST(altBn128Perf, g1_curve_ops_timing_nogmp) {
+    G1PointAffine a_aff, b_aff, c_aff;
+    G1.copy(a_aff, G1.one());           //  P
+    G1.add(b_aff, a_aff, G1.one());    // 2P
+    G1.add(c_aff, b_aff, G1.one());    // 3P
+
+    G1Point a_jac, b_jac, c_jac;
+    G1.copy(a_jac, a_aff);
+    G1.copy(b_jac, b_aff);
+    G1.copy(c_jac, c_aff);
+
+    const size_t N_MIXED = 300000;
+    const size_t N_FULL  = 200000;
+    const size_t N_DBL   = 300000;
+
+    G1Point acc_mixed;
+    G1.copy(acc_mixed, a_jac);
+    double ms_mixed = bench_ms([&]() {
+        for (size_t i = 0; i < N_MIXED; i++) {
+            G1.add(acc_mixed, acc_mixed, b_aff);
+        }
+    });
+
+    G1Point acc_full;
+    G1.copy(acc_full, a_jac);
+    double ms_full = bench_ms([&]() {
+        for (size_t i = 0; i < N_FULL; i++) {
+            G1.add(acc_full, acc_full, b_jac);
+        }
+    });
+
+    G1Point acc_dbl;
+    G1.copy(acc_dbl, c_jac);
+    double ms_dbl = bench_ms([&]() {
+        for (size_t i = 0; i < N_DBL; i++) {
+            G1.dbl(acc_dbl, acc_dbl);
+        }
+    });
+
+    ASSERT_FALSE(G1.isZero(acc_mixed));
+    ASSERT_FALSE(G1.isZero(acc_full));
+    ASSERT_FALSE(G1.isZero(acc_dbl));
+
+    std::cout << std::fixed << std::setprecision(3);
+    std::cout << "[perf][nogmp] G1.add mixed : " << ms_mixed << " ms (N=" << N_MIXED
+              << ") => " << ns_per_op(ms_mixed, N_MIXED) << " ns/op\n";
+    std::cout << "[perf][nogmp] G1.add full  : " << ms_full << " ms (N=" << N_FULL
+              << ") => " << ns_per_op(ms_full, N_FULL) << " ns/op\n";
+    std::cout << "[perf][nogmp] G1.dbl       : " << ms_dbl << " ms (N=" << N_DBL
+              << ") => " << ns_per_op(ms_dbl, N_DBL) << " ns/op\n";
+}
+
+TEST(altBn128Perf, multiexp_phases_timing_nogmp) {
+    const int NMExp = 40000;
+
+    typedef mp_uint_t Scalar;
+
+    Scalar *scalars = new Scalar[NMExp];
+    G1PointAffine *bases = new G1PointAffine[NMExp];
+
+    double ms_prepare = bench_ms([&]() {
+        for (int i = 0; i < NMExp; i++) {
+            if (i == 0) {
+                G1.copy(bases[0], G1.one());
+            } else {
+                G1.add(bases[i], bases[i - 1], G1.one());
+            }
+
+            mp_uint_t x;
+            mp_set(x, (uint64_t)(i + 1));
+            mp_copy(scalars[i], x);
+        }
+    });
+
+    G1Point r1;
+    double ms_multiexp = bench_ms([&]() {
+        G1.multiMulByScalar(r1, bases, (uint8_t *)scalars, MP_N, NMExp);
+    });
+
+    G1Point r2;
+    double ms_msm = bench_ms([&]() {
+        G1.multiMulByScalarMSM(r2, bases, (uint8_t *)scalars, MP_N, NMExp);
+    });
+
+    ASSERT_FALSE(G1.isZero(r1));
+    ASSERT_FALSE(G1.isZero(r2));
+
+    std::cout << std::fixed << std::setprecision(3);
+    std::cout << "[perf][nogmp] prepare bases/scalars : " << ms_prepare << " ms (N=" << NMExp << ")\n";
+    std::cout << "[perf][nogmp] G1.multiMulByScalar   : " << ms_multiexp << " ms (N=" << NMExp << ")\n";
+    std::cout << "[perf][nogmp] G1.multiMulByScalarMSM: " << ms_msm << " ms (N=" << NMExp << ")\n";
+
+    delete[] bases;
+    delete[] scalars;
+}
+
+
+
+TEST(altBn128Perf, affine_build_path_timing_nogmp) {
+    G1PointAffine p1_aff, p2_aff, out_aff;
+    G1.copy(p1_aff, G1.one());
+    G1.add(p2_aff, p1_aff, G1.one());   // 2P as affine
+
+    G1Point out_jac;
+    G1Point tmp_jac;
+
+    const size_t N_ADD_AFFINE = 200000;
+    const size_t N_TO_AFFINE  = 200000;
+    const size_t N_BUILD_STEP = 100000;
+
+    // 1) pure affine+affine -> Jacobian
+    double ms_add_affine = bench_ms([&]() {
+        for (size_t i = 0; i < N_ADD_AFFINE; i++) {
+            G1.add(out_jac, p1_aff, p2_aff);
+        }
+    });
+
+    // 2) pure Jacobian -> affine
+    G1.add(tmp_jac, p1_aff, p2_aff);
+    double ms_to_affine = bench_ms([&]() {
+        for (size_t i = 0; i < N_TO_AFFINE; i++) {
+            G1.copy(out_aff, tmp_jac);
+        }
+    });
+
+    // 3) exact prepare-step shape:
+    //    add(affine, affine) + copy(PointAffine <- Point)
+    G1PointAffine cur_aff;
+    G1.copy(cur_aff, p1_aff);
+
+    double ms_build_step = bench_ms([&]() {
+        for (size_t i = 0; i < N_BUILD_STEP; i++) {
+            G1.add(tmp_jac, cur_aff, p1_aff);
+            G1.copy(cur_aff, tmp_jac);
+        }
+    });
+
+    ASSERT_FALSE(G1.isZero(out_aff));
+    ASSERT_FALSE(G1.isZero(cur_aff));
+
+    std::cout << std::fixed << std::setprecision(3);
+    std::cout << "[perf][nogmp] G1.add affine+affine -> jac : "
+              << ms_add_affine << " ms (N=" << N_ADD_AFFINE
+              << ") => " << ns_per_op(ms_add_affine, N_ADD_AFFINE) << " ns/op\n";
+
+    std::cout << "[perf][nogmp] G1.copy jac -> affine       : "
+              << ms_to_affine << " ms (N=" << N_TO_AFFINE
+              << ") => " << ns_per_op(ms_to_affine, N_TO_AFFINE) << " ns/op\n";
+
+    std::cout << "[perf][nogmp] build step (add_aff + toAff): "
+              << ms_build_step << " ms (N=" << N_BUILD_STEP
+              << ") => " << ns_per_op(ms_build_step, N_BUILD_STEP) << " ns/op\n";
+}
+
+TEST(altBn128Perf, prepare_breakdown_nogmp) {
+    const int NMExp = 40000;
+
+    typedef mp_uint_t Scalar;
+
+    Scalar *scalars = new Scalar[NMExp];
+    G1PointAffine *bases = new G1PointAffine[NMExp];
+
+    double ms_scalars = bench_ms([&]() {
+        for (int i = 0; i < NMExp; i++) {
+            mp_uint_t x;
+            mp_set(x, (uint64_t)(i + 1));
+            mp_copy(scalars[i], x);
+        }
+    });
+
+    double ms_bases = bench_ms([&]() {
+        for (int i = 0; i < NMExp; i++) {
+            if (i == 0) {
+                G1.copy(bases[0], G1.one());
+            } else {
+                G1.add(bases[i], bases[i - 1], G1.one());
+            }
+        }
+    });
+
+    ASSERT_FALSE(G1.isZero(bases[NMExp - 1]));
+
+    std::cout << std::fixed << std::setprecision(3);
+    std::cout << "[perf][nogmp] prepare scalars only : " << ms_scalars << " ms (N=" << NMExp << ")\n";
+    std::cout << "[perf][nogmp] prepare bases only   : " << ms_bases   << " ms (N=" << NMExp << ")\n";
+
+    delete[] bases;
+    delete[] scalars;
+}
 
 }  // namespace
 

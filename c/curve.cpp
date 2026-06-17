@@ -560,17 +560,99 @@ void Curve<BaseField>::copy(Point &r, PointAffine &a) {
 }
 
 template <typename BaseField>
+void Curve<BaseField>::batchToAffine(PointAffine *out, Point *in, size_t n) {
+    if (n == 0) return;
+
+    typename BaseField::Element *prod = new typename BaseField::Element[n];
+    typename BaseField::Element *prefix = new typename BaseField::Element[n];
+    bool *is_nonzero = new bool[n];
+
+    typename BaseField::Element acc;
+    F.copy(acc, F.one());
+
+    for (size_t i = 0; i < n; i++) {
+        if (isZero(in[i])) {
+            is_nonzero[i] = false;
+            continue;
+        }
+
+        is_nonzero[i] = true;
+
+        // prod[i] = zz * zzz
+        F.mul(prod[i], in[i].zz, in[i].zzz);
+
+        // prefix[i] = previous accumulated product
+        F.copy(prefix[i], acc);
+
+        // acc *= prod[i]
+        F.mul(acc, acc, prod[i]);
+    }
+
+    typename BaseField::Element acc_inv;
+    F.inv(acc_inv, acc);   // single inversion for all points
+
+    for (size_t k = n; k-- > 0;) {
+        if (!is_nonzero[k]) {
+            F.copy(out[k].x, F.zero());
+            F.copy(out[k].y, F.zero());
+            continue;
+        }
+
+        typename BaseField::Element inv_prod;
+        typename BaseField::Element inv_zz;
+        typename BaseField::Element inv_zzz;
+
+        // inv_prod = 1 / (zz * zzz)
+        F.mul(inv_prod, prefix[k], acc_inv);
+
+        // acc_inv *= prod[k] for next iteration
+        F.mul(acc_inv, acc_inv, prod[k]);
+
+        // inv_zz  = zzz * inv_prod
+        // inv_zzz = zz  * inv_prod
+        F.mul(inv_zz,  in[k].zzz, inv_prod);
+        F.mul(inv_zzz, in[k].zz,  inv_prod);
+
+        F.mul(out[k].x, in[k].x, inv_zz);
+        F.mul(out[k].y, in[k].y, inv_zzz);
+    }
+
+    delete[] prod;
+    delete[] prefix;
+    delete[] is_nonzero;
+}
+
+template <typename BaseField>
 void Curve<BaseField>::copy(PointAffine &r, Point &a) {
 #ifdef COUNT_OPS
     cntToAffine++;
 #endif // COUNT_OPS
+
     if (isZero(a)) {
         F.copy(r.x, F.zero());
         F.copy(r.y, F.zero());
         return;
     }
-    F.div(r.x, a.x, a.zz);
-    F.div(r.y, a.y, a.zzz);
+
+    typename BaseField::Element t;
+    typename BaseField::Element t_inv;
+    typename BaseField::Element inv_zz;
+    typename BaseField::Element inv_zzz;
+
+    // t = zz * zzz = Z^5
+    F.mul(t, a.zz, a.zzz);
+
+    // t_inv = 1 / (zz * zzz)
+    F.inv(t_inv, t);
+
+    // inv_zz  = 1 / zz
+    // inv_zzz = 1 / zzz
+    F.mul(inv_zz,  a.zzz, t_inv);
+    F.mul(inv_zzz, a.zz,  t_inv);
+
+    // affine coordinates
+    F.mul(r.x, a.x, inv_zz);
+    F.mul(r.y, a.y, inv_zzz);
 }
 
 template <typename BaseField>
@@ -596,6 +678,61 @@ void Curve<BaseField>::neg(Point &r, PointAffine &a) {
 }
 
 template <typename BaseField>
+void Curve<BaseField>::batchNegToAffine(PointAffine *out, Point *in, size_t n) {
+    if (n == 0) return;
+
+    typename BaseField::Element *prod = new typename BaseField::Element[n];
+    typename BaseField::Element *prefix = new typename BaseField::Element[n];
+    bool *is_nonzero = new bool[n];
+
+    typename BaseField::Element acc;
+    F.copy(acc, F.one());
+
+    for (size_t i = 0; i < n; i++) {
+        if (isZero(in[i])) {
+            is_nonzero[i] = false;
+            continue;
+        }
+
+        is_nonzero[i] = true;
+
+        F.mul(prod[i], in[i].zz, in[i].zzz);
+        F.copy(prefix[i], acc);
+        F.mul(acc, acc, prod[i]);
+    }
+
+    typename BaseField::Element acc_inv;
+    F.inv(acc_inv, acc);   // single inversion for all points
+
+    for (size_t k = n; k-- > 0;) {
+        if (!is_nonzero[k]) {
+            F.copy(out[k].x, F.zero());
+            F.copy(out[k].y, F.zero());
+            continue;
+        }
+
+        typename BaseField::Element inv_prod;
+        typename BaseField::Element inv_zz;
+        typename BaseField::Element inv_zzz;
+        typename BaseField::Element y_aff;
+
+        F.mul(inv_prod, prefix[k], acc_inv);
+        F.mul(acc_inv, acc_inv, prod[k]);
+
+        F.mul(inv_zz,  in[k].zzz, inv_prod);
+        F.mul(inv_zzz, in[k].zz,  inv_prod);
+
+        F.mul(out[k].x, in[k].x, inv_zz);
+        F.mul(y_aff, in[k].y, inv_zzz);
+        F.neg(out[k].y, y_aff);
+    }
+
+    delete[] prod;
+    delete[] prefix;
+    delete[] is_nonzero;
+}
+
+template <typename BaseField>
 void Curve<BaseField>::neg(PointAffine &r, Point &a) {
 #ifdef COUNT_OPS
     cntToAffine++;
@@ -605,9 +742,28 @@ void Curve<BaseField>::neg(PointAffine &r, Point &a) {
         F.copy(r.y, F.zero());
         return;
     }
-    F.div(r.x, a.x, a.zz);
-    F.div(r.y, a.y, a.zzz);
-    F.neg(r.y, r.y);
+
+    typename BaseField::Element t;
+    typename BaseField::Element t_inv;
+    typename BaseField::Element inv_zz;
+    typename BaseField::Element inv_zzz;
+    typename BaseField::Element y_aff;
+
+    // t = zz * zzz
+    F.mul(t, a.zz, a.zzz);
+
+    // one inversion
+    F.inv(t_inv, t);
+
+    // 1/zz and 1/zzz
+    F.mul(inv_zz,  a.zzz, t_inv);
+    F.mul(inv_zzz, a.zz,  t_inv);
+
+    // x = X / zz
+    // y = -(Y / zzz)
+    F.mul(r.x, a.x, inv_zz);
+    F.mul(y_aff, a.y, inv_zzz);
+    F.neg(r.y, y_aff);
 }
 
 template <typename BaseField>

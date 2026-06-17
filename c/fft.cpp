@@ -36,39 +36,54 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
 
     u_int32_t domainPow = log2(maxDomainSize);
 
-    mpz_t m_qm1d2;
-    mpz_t m_q;
-    mpz_t m_nqr;
-    mpz_t m_aux;
-    mpz_init(m_qm1d2);
-    mpz_init(m_q);
-    mpz_init(m_nqr);
-    mpz_init(m_aux);
+    typedef uint64_t mp_uint_t[Field::N64];
 
-    f.toMpz(m_aux, f.negOne());     
+    mp_uint_t m_qm1d2;
+    mp_uint_t m_q;
+    mp_uint_t m_nqr;
+    mp_uint_t m_aux;
 
-    mpz_add_ui(m_q, m_aux, 1);
-    mpz_fdiv_q_2exp(m_qm1d2, m_aux, 1);
+    // mpz_init(...)
+    mp_set(m_qm1d2, 0);
+    mp_set(m_q, 0);
+    mp_set(m_nqr, 0);
+    mp_set(m_aux, 0);
 
-    mpz_set_ui(m_nqr, 2);
-    mpz_powm(m_aux, m_nqr, m_qm1d2, m_q);
-    while (mpz_cmp_ui(m_aux, 1) == 0) {
-        mpz_add_ui(m_nqr, m_nqr, 1);
-        mpz_powm(m_aux, m_nqr, m_qm1d2, m_q);
+    // f.toMpz(m_aux, f.negOne());
+    // mpz_add_ui(m_q, m_aux, 1);
+    // mpz_fdiv_q_2exp(m_qm1d2, m_aux, 1);
+    f.toMP(m_aux, f.negOne());      // generator должен дать toMp/fromMp (аналог toMpz/fromMpz)
+    mp_add(m_q, m_aux, 1);
+    mp_shr(m_qm1d2, m_aux, 1);
+
+    // mpz_set_ui(m_nqr, 2);
+    // mpz_powm(m_aux, m_nqr, m_qm1d2, m_q);
+    // while (mpz_cmp_ui(m_aux, 1) == 0) { ... }
+    mp_set(m_nqr, 2);
+
+    mp_uint_t one;
+    mp_set(one, 1);
+
+    mp_pow_mod(m_aux, m_nqr, m_qm1d2, m_q);
+    while (mp_cmp(m_aux, one) == 0) {
+        mp_add(m_nqr, m_nqr, 1);
+        mp_pow_mod(m_aux, m_nqr, m_qm1d2, m_q);
     }
 
-    f.fromMpz(nqr, m_nqr);
+    // f.fromMpz(nqr, m_nqr);
+    f.fromMP(nqr, m_nqr);
 
-    // std::cout << "nqr: " << f.toString(nqr) << std::endl;
-
+    // s = 1;
+    // mpz_set(m_aux, m_qm1d2);
+    // while ((!mpz_tstbit(m_aux, 0))&&(s<domainPow)) { mpz_fdiv_q_2exp(...); s++; }
     s = 1;
-    mpz_set(m_aux, m_qm1d2);
-    while ((!mpz_tstbit(m_aux, 0))&&(s<domainPow)) {
-        mpz_fdiv_q_2exp(m_aux, m_aux, 1);
+    mp_copy(m_aux, m_qm1d2);
+    while ((!mp_tstbit(m_aux, 0)) && (s < domainPow)) {
+        mp_shr(m_aux, m_aux, 1);
         s++;
     }
 
-    if (s<domainPow) {
+    if (s < domainPow) {
         throw std::range_error("Domain size too big for the curve");
     }
 
@@ -79,13 +94,18 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
 
     f.copy(roots[0], f.one());
     f.copy(powTwoInv[0], f.one());
-    if (nRoots>1) {
-        mpz_powm(m_aux, m_nqr, m_aux, m_q);
-        f.fromMpz(roots[1], m_aux);
+    if (nRoots > 1) {
+        // mpz_powm(m_aux, m_nqr, m_aux, m_q);
+        // f.fromMpz(roots[1], m_aux);
+        mp_pow_mod(m_aux, m_nqr, m_aux, m_q);
+        f.fromMP(roots[1], m_aux);
 
-        mpz_set_ui(m_aux, 2);
-        mpz_invert(m_aux, m_aux, m_q);
-        f.fromMpz(powTwoInv[1], m_aux);
+        // mpz_set_ui(m_aux, 2);
+        // mpz_invert(m_aux, m_aux, m_q);
+        // f.fromMpz(powTwoInv[1], m_aux);
+        mp_set(m_aux, 2);
+        mp_inv_mod(m_aux, m_aux, m_q);
+        f.fromMP(powTwoInv[1], m_aux);
     }
 
     threadPool.parallelBlock([&] (uint64_t nThreads, uint64_t idThread) {
@@ -93,13 +113,14 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
         uint64_t increment = nRoots / nThreads;
         uint64_t start = idThread==0 ? 2 : idThread * increment;
         uint64_t end   = idThread==nThreads-1 ? nRoots : (idThread+1) * increment;
-        if (end>start) {
+        if (end > start) {
             f.exp(roots[start], roots[1], (uint8_t *)(&start), sizeof(start));
         }
         for (uint64_t i=start+1; i<end; i++) {
             f.mul(roots[i], roots[i-1], roots[1]);
         }
     });
+
     Element aux;
     f.mul(aux, roots[nRoots-1], roots[1] );
     assert(f.eq(aux, f.one()));
@@ -108,10 +129,7 @@ FFT<Field>::FFT(u_int64_t maxDomainSize, uint32_t _nThreads)
         f.mul(powTwoInv[i], powTwoInv[i-1], powTwoInv[1]);
     }
 
-    mpz_clear(m_qm1d2);
-    mpz_clear(m_q);
-    mpz_clear(m_nqr);
-    mpz_clear(m_aux);
+    // mpz_clear(...) не нужен
 }
 
 template <typename Field>
@@ -202,7 +220,7 @@ template <typename Field>
 void FFT<Field>::ifft(Element *a, u_int64_t n ) {
     fft(a, n);
     u_int64_t domainPow =log2(n);
-    u_int64_t nDiv2= n >> 1; 
+    u_int64_t nDiv2= n >> 1;
 
     threadPool.parallelFor(1, nDiv2, [&] (int begin, int end, int numThread) {
         for (u_int64_t i=begin; i<end; i++) {
@@ -227,4 +245,3 @@ void FFT<Field>::printVector(Element *a, u_int64_t n ) {
     }
     cout << "]" << endl;
 }
-

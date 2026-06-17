@@ -5,6 +5,7 @@ template <typename Field>
 class FFT {
     Field f;
     typedef typename Field::Element Element;
+    typedef uint64_t mp_uint_t[Field::N64];
 
     u_int32_t s;
     Element nqr;

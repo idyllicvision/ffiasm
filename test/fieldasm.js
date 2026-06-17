@@ -111,8 +111,14 @@ describe("field asm test", function () {
 
     }
 
-    generateTest(bn128r, "gl");
-    generateTest(bn128r, "bn128");
+    generateTest(gl, "gl");
+    generateTest(bn128q, "bn128q");
+    generateTest(bn128r, "bn128r");
+    generateTest(bls12_381q, "bls12_381q");
+    generateTest(secp256k1q, "secp256k1q");
+    generateTest(secp256k1r, "secp256k1r");
+    generateTest(mnt6753q, "mnt6753q");
+    generateTest(mnt6753r, "mnt6753r");
 });
 
 function buildTestVector2(p, op) {

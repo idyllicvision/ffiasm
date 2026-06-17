@@ -4,7 +4,11 @@
 #include "<%=name.toLowerCase()%>_element.hpp"
 #include <cstdint>
 #include <string>
-#include <gmp.h>
+#include "mp.hpp"
+
+#ifdef __APPLE__
+#include <sys/types.h> // typedef unsigned int uint;
+#endif // __APPLE__
 
 extern <%=name%>Element <%=name%>_q;
 extern <%=name%>Element <%=name%>_R2;
@@ -51,10 +55,10 @@ extern "C" void <%=name%>_rawNeg(<%=name%>RawElement pRawResult, const <%=name%>
 extern "C" void <%=name%>_rawMMul(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, const <%=name%>RawElement pRawB);
 extern "C" void <%=name%>_rawMSquare(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
 extern "C" void <%=name%>_rawMMul1(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, uint64_t pRawB);
-extern "C" void <%=name%>_rawToMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
-extern "C" void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
-extern "C" int <%=name%>_rawIsEq(<%=name%>RawElement const pRawA, const <%=name%>RawElement pRawB);
-extern "C" int <%=name%>_rawIsZero(const <%=name%>RawElement pRawB);
+extern "C" void <%=name%>_rawToMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA);
+extern "C" void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA);
+extern "C" int  <%=name%>_rawIsEq(const <%=name%>RawElement pRawA, const <%=name%>RawElement pRawB);
+extern "C" int  <%=name%>_rawIsZero(const <%=name%>RawElement pRawB);
 extern "C" void <%=name%>_rawShl(<%=name%>RawElement r, <%=name%>RawElement a, uint64_t b);
 extern "C" void <%=name%>_rawShr(<%=name%>RawElement r, <%=name%>RawElement a, uint64_t b);
 
@@ -99,8 +103,8 @@ extern "C" void <%=name%>_rawNeg(<%=name%>RawElement pRawResult, const <%=name%>
 extern "C" void <%=name%>_rawMMul(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, const <%=name%>RawElement pRawB);
            void <%=name%>_rawMSquare(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
 extern "C" void <%=name%>_rawMMul1(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, uint64_t pRawB);
-           void <%=name%>_rawToMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
-extern "C" void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
+           void <%=name%>_rawToMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA);
+extern "C" void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA);
 extern "C" int  <%=name%>_rawIsEq(const <%=name%>RawElement pRawA, const <%=name%>RawElement pRawB);
 extern "C" int  <%=name%>_rawIsZero(const <%=name%>RawElement pRawB);
            void <%=name%>_rawZero(<%=name%>RawElement pRawResult);
@@ -118,8 +122,8 @@ extern "C" void <%=name%>_rawShr(<%=name%>RawElement r, <%=name%>RawElement a, u
 extern "C" void <%=name%>_rawNot(<%=name%>RawElement pRawResult, <%=name%>RawElement pRawA);
 extern "C" void <%=name%>_rawSubRegular(<%=name%>RawElement pRawResult, <%=name%>RawElement pRawA, <%=name%>RawElement pRawB);
 
-           void <%=name%>_fail();
-           void <%=name%>_longErr();
+void <%=name%>_fail();
+void <%=name%>_longErr();
 
 #endif
 
@@ -163,8 +167,8 @@ void <%=name%>_rawNeg(<%=name%>RawElement pRawResult, const <%=name%>RawElement 
 void <%=name%>_rawMMul(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, const <%=name%>RawElement pRawB);
 void <%=name%>_rawMSquare(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
 void <%=name%>_rawMMul1(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA, uint64_t pRawB);
-void <%=name%>_rawToMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
-void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA);
+void <%=name%>_rawToMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA);
+void <%=name%>_rawFromMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA);
 int <%=name%>_rawIsEq(const <%=name%>RawElement pRawA, const <%=name%>RawElement pRawB);
 int <%=name%>_rawIsZero(const <%=name%>RawElement pRawB);
 void <%=name%>_rawZero(<%=name%>RawElement pRawResult);
@@ -187,10 +191,11 @@ void <%=name%>_longErr();
 
 #endif
 
-// Pending functions to convert
 
-void <%=name%>_str2element(P<%=name%>Element pE, char const*s);
-char *<%=name%>_element2str(P<%=name%>Element pE);
+void <%=name%>_toMP(mp_uint_t out, P<%=name%>Element a);
+void <%=name%>_fromMP(P<%=name%>Element out, const mp_uint_t v);
+void <%=name%>_str2element(P<%=name%>Element pE, char const* s, int base);
+std::string <%=name%>_element2str(P<%=name%>Element pE, uint32_t base = 10);
 void <%=name%>_idiv(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 void <%=name%>_mod(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 void <%=name%>_inv(P<%=name%>Element r, P<%=name%>Element a);
@@ -203,7 +208,6 @@ public:
     const static int N64 = <%=name%>_N64;
     const static int MaxBits = <%= q.bitLength() %>;
 
-
     struct Element {
         <%=name%>RawElement v;
     };
@@ -214,65 +218,65 @@ private:
     Element fNegOne;
 
 public:
-
     Raw<%=name%>();
     ~Raw<%=name%>();
 
-    const Element &zero() { return fZero; }
-    const Element &one() { return fOne; }
-    const Element &negOne() { return fNegOne; }
+    const Element &zero() { return fZero; };
+    const Element &one() { return fOne; };
+    const Element &negOne() { return fNegOne; };
     Element set(int value);
     void set(Element &r, int value);
 
     void fromString(Element &r, const std::string &n, uint32_t radix = 10);
     std::string toString(const Element &a, uint32_t radix = 10);
 
-    void inline copy(Element &r, const Element &a) { <%=name%>_rawCopy(r.v, a.v); }
-    void inline swap(Element &a, Element &b) { <%=name%>_rawSwap(a.v, b.v); }
-    void inline add(Element &r, const Element &a, const Element &b) { <%=name%>_rawAdd(r.v, a.v, b.v); }
-    void inline sub(Element &r, const Element &a, const Element &b) { <%=name%>_rawSub(r.v, a.v, b.v); }
-    void inline mul(Element &r, const Element &a, const Element &b) { <%=name%>_rawMMul(r.v, a.v, b.v); }
+    void inline copy(Element &r, const Element &a) { <%=name%>_rawCopy(r.v, a.v); };
+    void inline swap(Element &a, Element &b) { <%=name%>_rawSwap(a.v, b.v); };
+    void inline add(Element &r, const Element &a, const Element &b) { <%=name%>_rawAdd(r.v, a.v, b.v); };
+    void inline sub(Element &r, const Element &a, const Element &b) { <%=name%>_rawSub(r.v, a.v, b.v); };
+    void inline mul(Element &r, const Element &a, const Element &b) { <%=name%>_rawMMul(r.v, a.v, b.v); };
 
-    Element inline add(const Element &a, const Element &b) { Element r; <%=name%>_rawAdd(r.v, a.v, b.v); return r;}
-    Element inline sub(const Element &a, const Element &b) { Element r; <%=name%>_rawSub(r.v, a.v, b.v); return r;}
-    Element inline mul(const Element &a, const Element &b) { Element r; <%=name%>_rawMMul(r.v, a.v, b.v); return r;}
+    Element inline add(const Element &a, const Element &b) { Element r; <%=name%>_rawAdd(r.v, a.v, b.v); return r;};
+    Element inline sub(const Element &a, const Element &b) { Element r; <%=name%>_rawSub(r.v, a.v, b.v); return r;};
+    Element inline mul(const Element &a, const Element &b) { Element r; <%=name%>_rawMMul(r.v, a.v, b.v); return r;};
 
-    Element inline neg(const Element &a) { Element r; <%=name%>_rawNeg(r.v, a.v); return r; }
-    Element inline square(const Element &a) { Element r; <%=name%>_rawMSquare(r.v, a.v); return r; }
+    Element inline neg(const Element &a) { Element r; <%=name%>_rawNeg(r.v, a.v); return r; };
+    Element inline square(const Element &a) { Element r; <%=name%>_rawMSquare(r.v, a.v); return r; };
 
-    Element inline add(int a, const Element &b) { return add(set(a), b);}
-    Element inline sub(int a, const Element &b) { return sub(set(a), b);}
-    Element inline mul(int a, const Element &b) { return mul(set(a), b);}
+    Element inline add(int a, const Element &b) { return add(set(a), b);};
+    Element inline sub(int a, const Element &b) { return sub(set(a), b);};
+    Element inline mul(int a, const Element &b) { return mul(set(a), b);};
 
-    Element inline add(const Element &a, int b) { return add(a, set(b));}
-    Element inline sub(const Element &a, int b) { return sub(a, set(b));}
-    Element inline mul(const Element &a, int b) { return mul(a, set(b));}
+    Element inline add(const Element &a, int b) { return add(a, set(b));};
+    Element inline sub(const Element &a, int b) { return sub(a, set(b));};
+    Element inline mul(const Element &a, int b) { return mul(a, set(b));};
 
-    void inline mul1(Element &r, const Element &a, uint64_t b) { <%=name%>_rawMMul1(r.v, a.v, b); }
-    void inline neg(Element &r, const Element &a) { <%=name%>_rawNeg(r.v, a.v); }
-    void inline square(Element &r, const Element &a) { <%=name%>_rawMSquare(r.v, a.v); }
+    void inline mul1(Element &r, const Element &a, uint64_t b) { <%=name%>_rawMMul1(r.v, a.v, b); };
+    void inline neg(Element &r, const Element &a) { <%=name%>_rawNeg(r.v, a.v); };
+    void inline square(Element &r, const Element &a) { <%=name%>_rawMSquare(r.v, a.v); };
     void inv(Element &r, const Element &a);
     void div(Element &r, const Element &a, const Element &b);
     void exp(Element &r, const Element &base, uint8_t* scalar, unsigned int scalarSize);
 
-    void inline toMontgomery(Element &r, const Element &a) { <%=name%>_rawToMontgomery(r.v, a.v); }
-    void inline fromMontgomery(Element &r, const Element &a) { <%=name%>_rawFromMontgomery(r.v, a.v); }
-    int inline eq(const Element &a, const Element &b) { return <%=name%>_rawIsEq(a.v, b.v); }
-    int inline isZero(const Element &a) { return <%=name%>_rawIsZero(a.v); }
+    void inline toMontgomery(Element &r, const Element &a) { <%=name%>_rawToMontgomery(r.v, a.v); };
+    void inline fromMontgomery(Element &r, const Element &a) { <%=name%>_rawFromMontgomery(r.v, a.v); };
+    int inline eq(const Element &a, const Element &b) { return <%=name%>_rawIsEq(a.v, b.v); };
+    int inline isZero(const Element &a) { return <%=name%>_rawIsZero(a.v); };
 
-    void toMpz(mpz_t r, const Element &a);
-    void fromMpz(Element &a, const mpz_t r);
+    void toMP(mp_uint_t r, const Element &a);
+    void fromMP(Element &a, const mp_uint_t r);
 
     int toRprBE(const Element &element, uint8_t *data, int bytes);
     int fromRprBE(Element &element, const uint8_t *data, int bytes);
 
-    int bytes ( void ) { return <%=name%>_N64 * 8; }
-
+    int bytes ( void ) { return <%=name%>_N64 * 8; };
 
     void fromUI(Element &r, unsigned long int v);
 
     static Raw<%=name%> field;
-
 };
 
 #endif // __<%=name.toUpperCase()%>_H
+
+
+

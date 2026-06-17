@@ -9,7 +9,17 @@
 
 static <%=name%>RawElement half = {<%= constantElement(q.shiftRight(1)) %>};
 static <%=name%>RawElement zero = {0};
+static <%=name%>RawElement <%=name%>_rawR2 = {<%= constantElement(bigInt.one.shiftLeft(n64*64*2).mod(q)) %>};
 
+void <%=name%>_rawMSquare(<%=name%>RawElement pRawResult, const <%=name%>RawElement pRawA)
+{
+    <%=name%>_rawMMul(pRawResult, pRawA, pRawA);
+}
+
+void <%=name%>_rawToMontgomery(<%=name%>RawElement pRawResult, const <%=name%>RawElement &pRawA)
+{
+    <%=name%>_rawMMul(pRawResult, pRawA, <%=name%>_rawR2);
+}
 
 void <%=name%>_copy(P<%=name%>Element r, const P<%=name%>Element a)
 {
@@ -270,6 +280,7 @@ void <%=name%>_mul(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
          mul_s1s2(r, a, b);
     }
 }
+
 
 void <%=name%>_toLongNormal(P<%=name%>Element r, P<%=name%>Element a)
 {
